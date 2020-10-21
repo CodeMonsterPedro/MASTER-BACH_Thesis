@@ -1,0 +1,61 @@
+Dict<dataName: MLObject> models
+
+@startuml
+
+class ForecastDeamon{
+
+Update()
+_UpdateShort()
+_UpdateSmart()
+
+}
+
+class ForecastShort{
+object _MLmodel
+
+
+}
+
+class ForecastSmart{
+
+}
+
+class ForecastSummaryModel{
+object _MLmodel
+int lastLocation = 0
+
+Dict<dateTime: summary> GetForecastSummary(int locationId, List<date> dateTime )
+_MakeSummary(Dict<dataName: value>)
+_GetNextData(int locationId, date dateTime)
+_SaveModel()
+}
+
+
+note left of ForecastSummaryModel
+
+GetForecastSummary(int locateionId, List<date> datetime):
+    result = dict()
+    for date in dateTime:
+        result[date] = self._MakeSummary(self._GetNextData(locationId, date))
+    return result
+    
+end note
+
+
+
+class DB{
+Search(string query)
+Remove(string query)
+Add(string query)
+}
+
+ForecastDeamon --* ForecastShort
+ForecastDeamon --* ForecastSmart
+ForecastDeamon --* ForecastSummaryModel
+ForecastSummaryModel --* DB
+
+
+@enduml
+
+
+
