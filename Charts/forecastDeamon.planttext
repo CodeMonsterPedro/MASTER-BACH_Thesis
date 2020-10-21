@@ -1,5 +1,3 @@
-Dict<dataName: MLObject> models
-
 @startuml
 
 class ForecastDeamon{
@@ -12,13 +10,33 @@ _UpdateSmart()
 
 class ForecastShort{
 object _MLmodel
+List<int> _locationsToUpdate
 
+Update()
+_GetLocationsList()
+_GetDataForLocation(int locationId)
+_ClearLastForecast()
+}
+
+class SimpleForecastModel{
+object model
+
+Train( int locationId)
+Run()
 
 }
 
-class ForecastSmart{
+note bottom of ForecastShrt
 
-}
+Update():
+    self._ClearLastForecast()
+    self._locations = self._GetLocationsList()
+    for id in locations:
+        self._GetDataForLocation(id)
+
+end note
+
+
 
 class ForecastSummaryModel{
 object _MLmodel
@@ -41,6 +59,9 @@ GetForecastSummary(int locateionId, List<date> datetime):
     
 end note
 
+class ForecastSmart{
+
+}
 
 
 class DB{
@@ -53,6 +74,7 @@ ForecastDeamon --* ForecastShort
 ForecastDeamon --* ForecastSmart
 ForecastDeamon --* ForecastSummaryModel
 ForecastSummaryModel --* DB
+ForecastShort --* SimpleForecastModel
 
 
 @enduml
