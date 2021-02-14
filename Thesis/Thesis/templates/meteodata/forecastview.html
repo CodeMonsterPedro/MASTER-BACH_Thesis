@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title%}Прогнозирование{% endblock %}
+
+{% block menu%}
+    <div name="menu" class="menu-row">
+    <a href="{% url 'meteodata-main' %}" class="{{menu_status.0}}">Просмотр метеоданных</a>
+    <a href="{% url 'forecast-main' %}" class="{{menu_status.1}}">Прогнозирование метеоданных</a>
+    <a href="{% url 'anomaly-main' %}" class="{{menu_status.2}}">Анализ метеоданных</a>
+    </div>
+{% endblock menu%}
+{% block submenu%}
+    <div class="submenu-row">
+    <form action="{% url 'forecast-update' %}" method="post">
+        {% csrf_token %}
+        <button class="subbutton-{{ submenu_status.1}}">Обновить данные</button>
+    </form>
+    </div>
+{% endblock submenu%}
+
+{% block content%}
+<div class="block">
+    <form action="{% url 'forecast-filter' %}" method="post">
+        {% csrf_token %}
+        <span>Кол-во строк: </span>
+        <select name="count" value={{ forecast_count }}>
+            <option value=10>10</option>
+            <option value=50>50</option>
+            <option value=100>100</option>
+        </select> 
+        <span>Номер страницы: </span>
+        <input type="text" name="page" value={{ forecast_page }}>
+        <span>/{{ forecast_max_pages }}</span></br>
+        <input type="text" name="search" value={{ forecast_search }}>
+        <button width="40px" height="30px" type="submit">Показать</button>
+    </form>
+</div>
+
+<table class="main-table">
+    <tr class="main-table-row">
+        
+        {% for row in forecast_top_labels%}
+            <td><center>{{ row }}</center></td>
+        {% endfor %}
+    </tr>
+
+{% for row in forecast%}
+    <tr class="main-table-row">
+    <td><center>{{ row.id }}</center></td>
+    <td><center>{{ row.datetime }}</center></td>
+    <td><center>{{ row.place }}</center></td>
+    <td><center>{{ row.placeName }}</center></td>
+    <td><center>{{ row.temperature }}</center></td>
+    <td><center>{{ row.wind_way }}</center></td>
+    <td><center>{{ row.wind_speed }}</center></td>
+    <td><center>{{ row.air_pressure }}</center></td>
+    <td><center>{{ row.water_pressure }}</center></td>
+    <td><center>{{ row.weather }}</center></td>
+    </tr>
+{% endfor %}
+</table>
+{% endblock %}
