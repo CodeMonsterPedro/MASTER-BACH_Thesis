@@ -162,20 +162,29 @@ class MainMenu:
     def get_max_pages():
         print('get_max_pages')
         if MainMenu.currentContext == 1:
-            size = len(Meteodata.objects.all())
+            size = Meteodata.objects.values('id').count()
             val = int(size // MainMenu.meteodata_count)
             if size % MainMenu.meteodata_count != 0:
                 val += 1
             return val
         elif MainMenu.currentContext == 2:
-            size = len(ForecastMeteodata.objects.all())
+            size = ForecastMeteodata.objects.values('id').count()
             val = int(size // MainMenu.forecast_count)
             if size % MainMenu.forecast_count != 0:
                 val += 1
             return val        
         elif MainMenu.currentContext == 3:
-            size = len(MeteodataAnomalies.objects.all())
+            size = MeteodataAnomalies.objects.values('id').count()
             val = int(size // MainMenu.anomaly_count)
             if size % MainMenu.anomaly_count != 0:
                 val += 1
             return val
+
+    def sort(dataName):
+        print('sort data')
+        if MainMenu.currentContext == 1:
+            MainMenu.meteodata.order_by(dataName)
+        elif MainMenu.currentContext == 2:
+            MainMenu.forecast.order_by(dataName)       
+        elif MainMenu.currentContext == 3:
+            MainMenu.anomaly.order_by(dataName)
