@@ -9,10 +9,11 @@ class ForecastDeamon:
         self._simple = SimpleForecastModel()
 
     def update(self):
-        self._makeSummary(self._updateShort())
+        self._updateShort()
+        self._makeSummary()
 
     def _updateShort(self):
-        return self._simple.update()
+        self._simple.update()
 
     def _makeSummary(self):
-        return self._summary.getForecastSummary()
+        self._summary.getForecastSummary()

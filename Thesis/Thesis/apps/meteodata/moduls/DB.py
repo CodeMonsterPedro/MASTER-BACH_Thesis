@@ -24,26 +24,26 @@ class DBControl():
 
     def insertMeteodata(self, data):
         _id = int(self.getMaxId(self._tables[2]) + 1)
-        self._curs.execute("INSERT INTO public.meteodata_meteodata VALUES('{" + data[0] + "}', '" + data[1]  + "', '{" + data[2] + "}', '{" + data[3] + "}', '{" + data[4] + "}', " + str(_id) + ")")
+        self._curs.execute("INSERT INTO public.meteodata_meteodata VALUES(DEFAULT, '" + data[0] + "', " + data[1] + ", '" + data[2] + "', " + data[3] + ", " + data[4] + ", " + data[5] + ", " + data[6] + ", " + data[7] + ", '{" + data[8] + "}')")
 
     def insertForecast(self, data):
         _id = int(self.getMaxId(self._tables[3]) + 1)
-        self._curs.execute("INSERT INTO public.meteodata_forecastmeteodata VALUES('{" + data[0] + "}', '" + data[1]  + "', '" + data[2]  + "', '" + data[3]  + "', " + str(_id) + ")")
-
+        self._curs.execute("INSERT INTO public.meteodata_forecastmeteodata VALUES(DEFAULT, '" + data[0] + "', " + data[1] + ", '" + data[2] + "', " + data[3] + ", " + data[4] + ", " + data[5] + ", " + data[6] + ", " + data[7] + ", '{" + data[8] + "}')")
+        
     def insertAnomalies(self, data):
         _id = int(self.getMaxId(self._tables[0]) + 1)
-        self._curs.execute("INSERT INTO public.meteodata_meteodataanomalies VALUES('{" + data[0] + "}', '" + data[1]  + "', '" + data[2]  + "', " + str(_id) + ")")
+        self._curs.execute("INSERT INTO public.meteodata_meteodataanomalies VALUES(DEFAULT," + data[0] + ", '{" + data[1] + "}', '{" + data[2] + "}', '{" + data[3] + "}')")
 
 # updaters
 
     def updateMeteodata(self, data):
-        self._curs.execute("UPDATE public.meteodata_meteodata SET full_name='{" + data[1] + "}', birthsday='" + data[2] + "', profession='{" + data[3] + "}', work_place='{" + data[4] + "}', passport_number='{" + data[5] + "}' WHERE id=" + str(data[0]))
+        self._curs.execute("UPDATE public.meteodata_meteodata SET datetime='" + data[0] + "', place=" + str(data[1]) + ", \"placeName\"" + data[2] + "', temperature=" + str(data[3]) + ", wind_way=" + str(data[4]) + ", wind_speed=" + str(data[5]) + ", air_pressure" + str(data[6]) + ", water_pressure" + str(data[7]) + ", weather='{" + data[8] + "}' WHERE id=" + str(data[0]))
 
     def updateForecast(self, data):
-        self._curs.execute("UPDATE public.meteodata_forecastmeteodata SET full_name='{" + data[1] + "}', month=" + data[2] + ", year=" + data[3] + ", payment=" + data[4] + " WHERE id=" + str(data[0]))
+        self._curs.execute("UPDATE public.meteodata_forecastmeteodata SET datetime='" + data[0] + "', place=" + str(data[1]) + ", \"placeName\"" + data[2] + "', temperature=" + str(data[3]) + ", wind_way=" + str(data[4]) + ", wind_speed=" + str(data[5]) + ", air_pressure" + str(data[6]) + ", water_pressure" + str(data[7]) + ", weather='{" + data[8] + "}' WHERE id=" + str(data[0]))
 
     def updateAnomalies(self, data):
-        self._curs.execute("UPDATE public.meteodata_meteodataanomalies SET profession='{" + data[1] + "}', price_per_hour=" + data[2] + ", last_update='" + data[3] + "' WHERE id=" + str(data[0]))
+        self._curs.execute("UPDATE public.meteodata_meteodataanomalies SET meteodata_id=" + str(data[1]) + ", fieldname='{" + data[2] + "}', value='{" + data[3] + "}', anomaly='{" + data[4] + "}' WHERE id=" + str(data[0]))
 
 # getters
 

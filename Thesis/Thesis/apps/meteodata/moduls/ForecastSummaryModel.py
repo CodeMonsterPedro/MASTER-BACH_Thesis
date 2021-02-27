@@ -11,19 +11,41 @@ class ForecastSummaryModel:
         self._db = DBControl()
         self._method = []
         self._dataSet = 0
-
+        self._weatherNames = {}
+        self._importNet()
 
     def getForecastSummary(self):
-        pass
+        rawData = self._getDataSet()
+        self._dataSet = self._prepareData(rawData)
+        tryId = 0
+        resultList = []
+        for i in range(len(rawData)):
+            tryId += 1
+            tmp = rawData[i]
+            tmp[-1] = self._predict(self._dataSet[i])
+            resultList.append(tmp)
+            if tryId >= 100:
+                for row in resultList:
+                    self._db.updateForecast(row)
+                self._db.save()
+                resultList.clear()
+                tryId = 0
 
     def _getDataSet(self):
-        data = self._db.getForecast()
+        s = "weather='{" + "0}'"
+        data = self._db.getForecast(where=s)
         return data
 
     def _predict(self, row):
-        return self._method.predict(row)
+        values = self._method.predict(row)
+        id = 0
+        for i in range(len(values)):
+            if values[id] < values[i]:
+                id = i
+        return self._weatherNames[id]
 
     def _importNet(self):
-        fileInfo = QFileDialog.getOpenFileName()
-        fileName = fileInfo[0].split('.')
-        self._method = keras.models.load_model(fileInfo[0])
+        self._method = keras.models.load_model('../../../models/fullconnect.h5')
+
+    def _prepareData(self, data):
+        pass
