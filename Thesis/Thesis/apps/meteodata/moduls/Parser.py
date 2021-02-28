@@ -218,9 +218,9 @@ class MyParser:
                 d['Час'] = '12:00'
             self._curs.execute("INSERT INTO public.meteodata VALUES(DEFAULT, '" + str(d['y']) + "-" + str(d['m']) + "-" + str(d['День']) + " " + str(d['Час']) + ":00', " + str(d['city']) + ", '" + citySet[d['city']] + "', " + str(d['Темп. Возд']) + ", " + str(d['Ветер']) + ", " + str(d['Скор ветра']) + ", " + str(d['Давл станц']) + ", " + str(d['Давл моря']) + ", '{" + str(d['Явления погоды']) + "}')")
             self._conn.commit()
-            i = i + 1        
+            i = i + 1
                 #11-3
-                #4-10 
+                #4-10
             if i == len(lines):
                 break
         self._f.close()     
