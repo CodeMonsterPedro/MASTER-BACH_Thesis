@@ -212,7 +212,6 @@ class Base:
         # results
         self._scoreResult = 0
         self._metricResult = 0
-        self._isStatSaved = False
         self._isFileParsed = False
         self._isModelUploaded = False
     
@@ -226,50 +225,76 @@ class Base:
         return result
 
     def _startTraining(self):
-        self._isStatSaved = False
-        self._method.fit(self._train_values, self._train_labels, epochs=self._epochs, shuffle=True)
-        self._saveNet()
+        self._method.fit(self._train_values, self._train_labels, epochs=self._epochs)
+        self._saveNet(obj=self._method)
         test_loss, test_acc = self._method.evaluate(self._test_values,  self._test_labels, verbose=2)
         self._predictions = self._method.predict(self._test_values)
         print(self._predictions) 
         print('loss', test_loss)
         print('acc', test_acc)
     
-    def _build(self):
-        data = self._getStartData()# self._train_values, self._train_labels, self._test_values,  self._test_labels, self._values, self._labels
-        tempWeatherList = []
-        for item in self._weatherList.values():
-            if item not in tempWeatherList:
-                tempWeatherList.append(item)
-        i = 1.0
-        for item in tempWeatherList:
-            self._correctWeatherDict.update({item: i})
-            i = i + 1.0
-        if self._methodId == 0:
-            self._buildDataForAutoencoder(data)
-        elif self._methodId == 1:
-            self._buildDataForPerceptron(data)
-        elif self._methodId == 2:
-            self._buildDataForRnn(data)
-        self._buildNet()
+    def _startRnnTraining(self):
+        for i in range(len(self._method)):
+            obj = self._method[i]
+            obj.fit(self._train_values, self._train_labels[i], epochs=self._epochs)
+            test_loss, test_acc = self._method.evaluate(self._test_values,  self._test_labels[i], verbose=2)
+            self._predictions = self._method.predict(self._test_values)
+            print(self._predictions) 
+            print('loss', test_loss)
+            print('acc', test_acc)
+        self._saveNet(name='Rnn-temperature', obj=self._method[0])
+        self._saveNet(name='Rnn-wind_way', obj=self._method[1])
+        self._saveNet(name='Rnn-wind_speed', obj=self._method[2])
+        self._saveNet(name='Rnn-air_pressure', obj=self._method[3])
+        self._saveNet(name='Rnn-water_pressure', obj=self._method[4])
 
-    def _buildNet(self):
+    def buildAutoencoder(self):
+        data = self._getStartData()# self._train_values, self._train_labels, self._test_values,  self._test_labels, self._values, self._labels
+        self._getWeatherList()
+        self._buildDataForAutoencoder(data)
+        self._buildAutoencoderNet()
+
+    def buildPerceptron(self):
+        data = self._getStartData()
+        self._getWeatherList()
+        self._buildDataForPerceptron(data)
+        self._buildPerceptronNet()
+    
+    def buildRnn(self):
+        data = self._getStartData()
+        self._getWeatherList()
+        self._buildDataForRnn(data)
+        self._buildRnnNet()
+
+    def _buildAutoencoderNet(self):
         self._method = keras.Sequential()
-        if self._methodId == 0:
-            self._loss = 'mae'
-            self._method = AnomalyDetector()
-        elif self._methodId == 1:
-            self._method.add(keras.layers.InputLayer(input_shape=(len(self._values[0]),)))
-            self._method.add(keras.layers.Dense(190, activation='relu'))
-            self._method.add(keras.layers.Dense(1900, activation='relu'))
-            self._method.add(keras.layers.Dense(190, activation='relu'))
-            self._method.add(keras.layers.Dense(len(list(self._correctWeatherDict.keys())) + 1, activation='softmax'))
-        elif self._methodId == 2:
-            self._method.add(keras.layers.Embedding(input_dim=len(self._values), output_dim=len(self._labels[0]), input_shape=(len(self._values[0]),)))
-            self._method.add(keras.layers.SimpleRNN(190))
-            self._method.add(keras.layers.Dense(len(self._labels[0]), activation='softmax'))
+        self._loss = 'mean_absolute_error'
+        self._method = AnomalyDetector()
         self._method.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metric)
         self._method.summary()
+    
+    def _buildPerceptronNet(self):
+        self._method = keras.Sequential()
+        self._method.add(keras.layers.InputLayer(input_shape=(len(self._values[0]),)))
+        self._method.add(keras.layers.Dense(190, activation='relu'))
+        self._method.add(keras.layers.Dense(1900, activation='relu'))
+        self._method.add(keras.layers.Dense(190, activation='relu'))
+        self._method.add(keras.layers.Dense(len(list(self._correctWeatherDict.keys())) + 1, activation='softmax'))
+        self._method.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metric)
+        self._method.summary()
+
+    def _buildRnnNet(self):
+        self._method = []
+        #self._metric = 'mean_absolute_error'
+        self._loss = 'mean_absolute_error'
+        for labels in self._labels:
+            obj = keras.Sequential()
+            obj.add(keras.layers.Embedding(input_dim=len(self._values[0]), output_dim=len(labels[0])))
+            obj.add(keras.layers.LSTM(10))
+            obj.add(keras.layers.Dense(len(labels[0]), activation='softmax'))
+            obj.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metric)
+            obj.summary()
+            self._method.append(obj)
 
 
     def _buildDataForAutoencoder(self, data):
@@ -360,38 +385,56 @@ class Base:
         self._values = data
         valueList = []
         labelList = []
-        for i in range(len(self._values)):
+        labelTemperature = []
+        labelWind_way = []
+        labelWind_speed = []
+        labelAir_pressure = []
+        labelWater_pressure = []
+        for i in range(len(self._values) - 1):
             valtmp = []
-            labtmp = []
             datetimeData = datetime.strptime(self._values[i][0][:-6], "%Y-%m-%d %H:%M:%S")# 0 - datetime, 1 - place, 2 - placeName, 3 - temperature, 4 - wind_way, 5 - wind_speed, 6 - air_pressure, 7 - water_pressure, 8 - weather
             d = datetimeData
-            valtmp.append(d.year)
-            valtmp.append(d.month)
-            valtmp.append(d.day) # 0 - date
-            valtmp.append(d.hour)
-            valtmp.append(d.minute)
-            valtmp.append(d.second)# 0 - time
-            valtmp.append(float(self._values[i][1])) # 1 - place
-            valtmp.append(float(self._values[i][3])) # 3 - temperature
-            valtmp.append(float(self._values[i][4])) # 4 - wind_way
-            valtmp.append(float(self._values[i][5])) # 5 - wind_speed
-            valtmp.append(float(self._values[i][6])) # 6 - air_pressure
-            valtmp.append(float(self._values[i][7])) # 7 - water_pressure
-            labtmp.append(float(self._values[i][3])) # 3 - temperature
-            labtmp.append(float(self._values[i][4])) # 4 - wind_way
-            labtmp.append(float(self._values[i][5])) # 5 - wind_speed
-            labtmp.append(float(self._values[i][6])) # 6 - air_pressure
-            labtmp.append(float(self._values[i][7])) # 7 - water_pressure
+            valtmp.append(float(d.year) / 10000)
+            valtmp.append(float(d.month) / 100)
+            valtmp.append(float(d.day)  / 100) # 0 - date
+            valtmp.append(float(d.hour)  / 100)
+            valtmp.append(float(self._values[i][1]) / 100000) # 1 - place
+            valtmp.append(float(self._values[i][3]) / 100) # 3 - temperature
+            valtmp.append(float(self._values[i][4]) / 10) # 4 - wind_way
+            valtmp.append(float(self._values[i][5]) / 100) # 5 - wind_speed
+            valtmp.append(float(self._values[i][6]) / 1000) # 6 - air_pressure
+            valtmp.append(float(self._values[i][7]) / 1000) # 7 - water_pressure
+            labelTemperature.append(float(self._values[i + 1][3]) / 100)# 3 - temperature
+            labelWind_way.append(float(self._values[i + 1][4]) / 10)# 4 - wind_way
+            labelWind_speed.append(float(self._values[i + 1][5]) / 100)# 5 - wind_speed
+            labelAir_pressure.append(float(self._values[i + 1][6]) / 1000)# 6 - air_pressure
+            labelWater_pressure.append(float(self._values[i + 1][7]) / 1000)# 7 - water_pressure
             valueList.append(valtmp)
-            labelList.append(labtmp)
+        self._labels.append(labelTemperature)
+        self._labels.append(labelWind_way)
+        self._labels.append(labelWind_speed)
+        self._labels.append(labelAir_pressure)
+        self._labels.append(labelWater_pressure)
         self._values = valueList
-        self._labels = labelList
-        self._train_values, self._test_values, self._train_labels, self._test_labels = train_test_split(self._values, self._labels, test_size=0.20, random_state=42)
-        print(self._train_values[:20], self._test_values[:20], self._train_labels[:20], self._test_labels[:20])
+        for l in self._labels:
+            self._train_values, self._test_values, train_labels, test_labels = train_test_split(self._values, l, test_size=0.20, random_state=42)
+            self._train_labels.append(train_labels)
+            self._test_labels.append(test_labels)
+        print(self._train_values[:20], self._test_values[:20])
 
 # -------------------------------  
 
 # SETTERS
+
+    def _getWeatherList(self):
+        tempWeatherList = []
+        for item in self._weatherList.values():
+            if item not in tempWeatherList:
+                tempWeatherList.append(item)
+        i = 1.0
+        for item in tempWeatherList:
+            self._correctWeatherDict.update({item: i})
+            i = i + 1.0
 
     def _getStartData(self):
         if self._methodId == 0:
@@ -403,13 +446,13 @@ class Base:
             result = self._refactorRecords(self._curs.fetchall())
             return result
         elif self._methodId == 2:
-            self._curs.execute("SELECT datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather FROM public.meteodata_meteodata")
+            self._curs.execute("SELECT datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather FROM public.meteodata_meteodata ORDER BY datetime")
             result = self._refactorRecords(self._curs.fetchall())
             return result
         else:
             return 0
 
-    def _saveNet(self, name=''):
+    def _saveNet(self, obj, name=''):
         ttype = ""
         if self._methodId == 0:
                 ttype = "Autoencoder"
@@ -418,17 +461,17 @@ class Base:
         elif self._methodId == 2:
                 ttype = "Rnn"
         if name == name:
-            self._method.save('../../../models/' + ttype + "-" + name + ".h5")
+            obj.save('./../../../models/' + ttype + "-" + name + ".h5")
         else:
             n = str(date.today())
             t = ttime.localtime()
             t = ttime.strftime("%M%S", t)
-            self._method.save('../../../models/' + n + t + ttype + ".h5")
+            obj.save('./../../../models/' + n + t + ttype + ".h5")
 
     def _importNet(self):
         fileInfo = QFileDialog.getOpenFileName()
         fileName = fileInfo[0].split('.')
-        self._method = keras.models.load_model(fileInfo[0])
+        return keras.models.load_model(fileInfo[0])
 
 # ADDITIONAL
 
@@ -463,7 +506,7 @@ class Base:
 
 if __name__ == "__main__":
     b = Base()
-    b._methodId = 2
+    b._methodId = 1
     test = False
     if test:
         b._importNet()
@@ -472,8 +515,15 @@ if __name__ == "__main__":
         for i in range(len(predictions)):
             print("try {}".format(i), data[i], predictions[i])
     else:
-        b._epochs = 60
-        b._build()
-        b._startTraining()
-        b._saveNet()
+        b._epochs = 20
+        if b._methodId == 1:
+            b.buildPerceptron()
+            b._startTraining()
+        elif b._methodId == 2:
+            b.buildRnn()
+            b._startRnnTraining()
+        else:
+            b.buildAutoencoder()
+            b._startTraining()
+        
 
