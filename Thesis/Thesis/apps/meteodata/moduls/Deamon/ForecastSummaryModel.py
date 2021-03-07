@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import Model
-from .DB import DBControl
+from ..DB import DBControl
 from datetime import datetime, date, time
 
 
@@ -45,7 +45,7 @@ class ForecastSummaryModel:
         return self._weatherNames[id]
 
     def _importNet(self):
-        self._method = keras.models.load_model('../../../models/fullconnect.h5')
+        self._method = keras.models.load_model('../../../../models/fullconnect.h5')
 
     def _prepareData(self, data):
         pass

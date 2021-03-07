@@ -1,9 +1,13 @@
 from ..models import Meteodata, ForecastMeteodata, MeteodataAnomalies
 from django.db.models import Q
+from .Deamon.ForecastDeamon import ForecastDeamon
+from .MeteodataMiner import MeteodataMiner
 
 
 class MainMenu:
 
+    Deamon = ForecastDeamon()
+    Miner = MeteodataMiner()
     currentContext = 1
     meteodata_page = 1
     meteodata_count = 50
@@ -128,12 +132,15 @@ class MainMenu:
 
     def data_update():
         print('data_update')
-
+        MainMenu.Miner.updateMeteodata()
+        
     def forecast_update():
         print('forecast_update')
+        MainMenu.Deamon.update()
 
     def anomaly_update():
         print('anomaly_update')
+        MainMenu.Deamon.scanForAnomalies()
 
     def get_menu_status():
         print('get_menu_status')
@@ -146,9 +153,16 @@ class MainMenu:
 
     def get_submenu_status():
         print('get_submenu_status')
-        if False:
-            return 'timeout'
-        return 'ready'
+        if MainMenu.currentContext in [1, 2]:
+            if MainMenu.Deamon.forecastUpdateStatus():
+                return 'hide'
+            else:
+                return 'active'
+        elif MainMenu.currentContext == 3:
+            if MainMenu.Deamon.anomaliesScanStatus():
+                return 'hide'
+            else:
+                return 'active'
 
     def get_top_labels():
         print('get_top_labels')
