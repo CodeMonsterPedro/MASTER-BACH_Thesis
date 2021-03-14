@@ -11,29 +11,54 @@ import psycopg2
 import math
 from datetime import datetime, date, time
 import time as ttime
+import pickle
 
 
 class AnomalyDetector(Model):
 
-    def __init__(self):
+    def __init__(self, values_size, latent_dim):
         super(AnomalyDetector, self).__init__()
         self.encoder = tf.keras.Sequential()
-        self.encoder.add(keras.layers.InputLayer(input_shape=(9, )))
-        self.encoder.add(keras.layers.Dense(0, activation="relu"))
+        self.encoder.add(keras.layers.InputLayer(input_shape=(values_size, )))
+        self.encoder.add(keras.layers.Dense(latent_dim, activation="relu"))
+        self.encoder.add(keras.layers.Dense(int(latent_dim / 2), activation="relu"))
         self.decoder = tf.keras.Sequential()
-        self.decoder.add(keras.layers.Dense(0, activation="relu"))
-        self.decoder.add(keras.layers.Dense(9, activation="relu"))
+        self.decoder.add(keras.layers.InputLayer(input_shape=(int(latent_dim / 2), )))
+        self.decoder.add(keras.layers.Dense(int(latent_dim / 2), activation="relu"))
+        self.decoder.add(keras.layers.Dense(values_size, activation="relu"))
 
     def call(self, x):
+        print(len(x))
         encoded = self.encoder(x)
         decoded = self.decoder(encoded)
         return decoded
+    '''
+    def updateTheshold(self, data):
+        reconstructions = self.predict(data)
+        train_loss = tf.keras.losses.mae(reconstructions, data)
+        threshold = np.mean(train_loss) + np.std(train_loss)
+        print("Threshold: ", threshold)
+
+    def predict(self, data, threshold):
+        reconstructions = model(data)
+        loss = tf.keras.losses.mae(reconstructions, data)
+        return tf.math.less(loss, threshold)
+
+
+    def isAnomaly(self, x):
+        pass
+
+    '''
 
 
 class Base:
 
     def __init__(self):
         print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+        gpus = tf.config.list_physical_devices('GPU')
+        if gpus:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
         # base struct
         self._conn = psycopg2.connect(dbname='Weather', user='postgres', password='12345', host='localhost')
         self._curs = self._conn.cursor()
@@ -234,19 +259,13 @@ class Base:
         print('acc', test_acc)
     
     def _startRnnTraining(self):
-        for i in range(len(self._method)):
-            obj = self._method[i]
-            obj.fit(self._train_values, self._train_labels[i], epochs=self._epochs)
-            test_loss, test_acc = self._method.evaluate(self._test_values,  self._test_labels[i], verbose=2)
-            self._predictions = self._method.predict(self._test_values)
-            print(self._predictions) 
-            print('loss', test_loss)
-            print('acc', test_acc)
-        self._saveNet(name='Rnn-temperature', obj=self._method[0])
-        self._saveNet(name='Rnn-wind_way', obj=self._method[1])
-        self._saveNet(name='Rnn-wind_speed', obj=self._method[2])
-        self._saveNet(name='Rnn-air_pressure', obj=self._method[3])
-        self._saveNet(name='Rnn-water_pressure', obj=self._method[4])
+        self._method.fit(self._train_values, self._train_labels, epochs=self._epochs)
+        test_loss, test_acc = self._method.evaluate(self._test_values,  self._test_labels, verbose=2)
+        self._predictions = self._method.predict(self._test_values)
+        print(self._predictions) 
+        print('loss', test_loss)
+        print('acc', test_acc)
+        self._saveNet(name='Rnn-temperature', obj=self._method)
 
     def buildAutoencoder(self):
         data = self._getStartData()# self._train_values, self._train_labels, self._test_values,  self._test_labels, self._values, self._labels
@@ -268,10 +287,10 @@ class Base:
 
     def _buildAutoencoderNet(self):
         self._method = keras.Sequential()
-        self._loss = 'mean_absolute_error'
-        self._method = AnomalyDetector()
+        self._loss = 'mean_squared_error'
+        self._method = AnomalyDetector(len(self._values[0]), 100)
         self._method.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metric)
-        self._method.summary()
+        #self._method.summary()
     
     def _buildPerceptronNet(self):
         self._method = keras.Sequential()
@@ -286,61 +305,85 @@ class Base:
     def _buildRnnNet(self):
         self._method = []
         #self._metric = 'mean_absolute_error'
-        self._loss = 'mean_absolute_error'
-        for labels in self._labels:
-            obj = keras.Sequential()
-            obj.add(keras.layers.Embedding(input_dim=len(self._values[0]), output_dim=len(labels[0])))
-            obj.add(keras.layers.LSTM(10))
-            obj.add(keras.layers.Dense(len(labels[0]), activation='softmax'))
-            obj.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metric)
-            obj.summary()
-            self._method.append(obj)
+        self._loss = 'mean_squared_error'
+        self._method = keras.Sequential()
+        self._method.add(keras.layers.Embedding(input_dim=len(self._values[0]), output_dim=len(self._labels[0])))
+        self._method.add(keras.layers.LSTM(128))
+        self._method.add(keras.layers.Dense(len(self._labels[0]), activation='softmax'))
+        self._method.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metric)
+        self._method.summary()
 
 
     def _buildDataForAutoencoder(self, data):
         self._values = data
-        for i in range(len(self._values)):
-            weather = self._values[i][-1]
-            self._labels.append(weather)
-            self._values[i].pop(len(self._values[i]) - 1)
-        for i in range(len(self._labels)):
-            try:
-                temp = self._labels[i]
-                if temp.isdigit():
-                    self._labels[i] = "Нет"
-                else:
-                    self._labels[i] = self._weatherList[self._labels[i]]
-            except:
-                self._labels[i] = "Нет"
-        for i in range(len(self._labels)):
-            self._labels[i] = (self._correctWeatherDict[self._labels[i]])
-        for i in range(len(self._values)):
-            datetimeData = datetime.strptime(self._values[i][0][:-6], "%Y-%m-%d %H:%M:%S")
+        valueList = []
+        labelList = []
+        for i in range(len(self._values) - 1):
+            valtmp = []
+            lebtmp = []
+            datetimeData = datetime.strptime(self._values[i][0][:-6], "%Y-%m-%d %H:%M:%S")# 0 - datetime, 1 - place, 2 - placeName, 3 - temperature, 4 - wind_way, 5 - wind_speed, 6 - air_pressure, 7 - water_pressure, 8 - weather
             d = datetimeData
-            self._values[i][0] = d.date()
-            self._values[i][0] = self._values[i][0] - date(2000, 1, 1)
-            self._values[i][0] = float(self._values[i][0].days)
-            self._values[i][2] = d.time()
-            self._values[i][2] = float(self._values[i][2].hour) * 3600 + float(self._values[i][2].minute) * 60 + float(self._values[i][2].second)
-            self._values[i][2] = float(self._values[i][2])
-            self._values[i][1] = float(self._values[i][1])
-            self._values[i][3] = float(self._values[i][3])
-            self._values[i][4] = float(self._values[i][4])
-            self._values[i][5] = float(self._values[i][5])
-            self._values[i][6] = float(self._values[i][6])
+            valtmp.append(float(d.year) / 10000)
+            valtmp.append(float(d.month) / 100)
+            valtmp.append(float(d.day)  / 100) # 0 - date
+            valtmp.append(float(d.hour)  / 100)
+            valtmp.append(float(self._values[i][1] - 30000) / 10000) # 1 - place
+            valtmp.append(float(self._values[i][3] + 100) / 10000) # 3 - temperature -
+            valtmp.append(float(self._values[i][4]) / 10) # 4 - wind_way
+            valtmp.append(float(self._values[i][5]) / 10000) # 5 - wind_speed -
+            valtmp.append(float(self._values[i][6]) / 10000) # 6 - air_pressure
+            valtmp.append(float(self._values[i][7]) / 10000) # 7 - water_pressure
+            lebtmp.append(float(d.year) / 10000)
+            lebtmp.append(float(d.month) / 100)
+            lebtmp.append(float(d.day)  / 100) # 0 - date
+            lebtmp.append(float(d.hour)  / 100)
+            lebtmp.append(float(self._values[i][1] - 30000) / 10000) # 1 - place
+            lebtmp.append(float(self._values[i][3] + 100) / 10000) # 3 - temperature -
+            lebtmp.append(float(self._values[i][4]) / 10) # 4 - wind_way
+            lebtmp.append(float(self._values[i][5]) / 10000) # 5 - wind_speed -
+            lebtmp.append(float(self._values[i][6]) / 10000) # 6 - air_pressure
+            lebtmp.append(float(self._values[i][7]) / 10000) # 7 - water_pressure
+            '''
+            last one
+            valtmp.append(float(d.year) / 10000)
+            valtmp.append(float(d.month) / 100)
+            valtmp.append(float(d.day)  / 100) # 0 - date
+            valtmp.append(float(d.hour)  / 100)
+            valtmp.append(float(self._values[i][1] - 30000) / 10000) # 1 - place
+            valtmp.append(float(self._values[i][3] + 100) / 10000) # 3 - temperature -
+            valtmp.append(float(self._values[i][4]) / 10) # 4 - wind_way
+            valtmp.append(float(self._values[i][5]) / 10000) # 5 - wind_speed -
+            valtmp.append(float(self._values[i][6]) / 1000) # 6 - air_pressure
+            valtmp.append(float(self._values[i][7]) / 1000) # 7 - water_pressure
+            lebtmp.append(float(self._values[i + 1][3] + 100) / 10000)# 3 - temperature
+            lebtmp.append(float(self._values[i + 1][4]) / 10)# 4 - wind_way
+            lebtmp.append(float(self._values[i + 1][5]) / 10000)# 5 - wind_speed
+            lebtmp.append(float(self._values[i + 1][6]) / 1000)# 6 - air_pressure
+            lebtmp.append(float(self._values[i + 1][7]) / 1000)# 7 - water_pressure
+
+            best one
+            valtmp.append(float(d.year) / 10000)
+            valtmp.append(float(d.month) / 100)
+            valtmp.append(float(d.day)  / 100) # 0 - date
+            valtmp.append(float(d.hour)  / 100)
+            valtmp.append(float(self._values[i][1] - 30000) / 10000) # 1 - place
+            valtmp.append(float(self._values[i][3] + 100) / 10000) # 3 - temperature -
+            valtmp.append(float(self._values[i][4]) / 10) # 4 - wind_way
+            valtmp.append(float(self._values[i][5]) / 10000) # 5 - wind_speed -
+            valtmp.append(float(self._values[i][6]) / 10000) # 6 - air_pressure
+            valtmp.append(float(self._values[i][7]) / 10000) # 7 - water_pressure
+            lebtmp.append(float(self._values[i + 1][3] + 100) / 10000)# 3 - temperature
+            lebtmp.append(float(self._values[i + 1][4]) / 10)# 4 - wind_way
+            lebtmp.append(float(self._values[i + 1][5]) / 10000)# 5 - wind_speed
+            lebtmp.append(float(self._values[i + 1][6]) / 10000)# 6 - air_pressure
+            lebtmp.append(float(self._values[i + 1][7]) / 10000)# 7 - water_pressure
+            '''
+            valueList.append(valtmp)
+            labelList.append(lebtmp)
+        self._values = valueList
+        self._labels = labelList
         self._train_values, self._test_values, self._train_labels, self._test_labels = train_test_split(self._values, self._labels, test_size=0.20, random_state=42)
-        if self._methodId == 0:
-            self._train_labels = self._train_labels.astype(bool)
-            self._test_labels = self._test_labels.astype(bool)
-            normal_train_data = self._train_values[self._train_labels]
-            normal_test_data = self._test_values[self._test_labels]
-            anomalous_train_data = self._train_values[~self._train_labels]
-            anomalous_test_data = self._test_values[~self._test_labels]
-            self._anomaly = [anomalous_train_data, anomalous_test_data]
-            self._train_values = normal_train_data
-            self._test_values = normal_test_data
-            self._test_labels = self._test_values
-            self._train_labels = self._train_values
+        print(self._train_values[:20], self._test_values[:20], self._train_labels[:20], self._test_labels[:20])
 
     def _buildDataForPerceptron(self, data):
         self._values = data
@@ -368,8 +411,6 @@ class Base:
             tmp.append(d.month)
             tmp.append(d.day) # 0 - date
             tmp.append(d.hour)
-            tmp.append(d.minute)
-            tmp.append(d.second)# 0 - time
             tmp.append(float(self._values[i][1])) # 1 - place
             tmp.append(float(self._values[i][3])) # 3 - temperature
             tmp.append(float(self._values[i][4])) # 4 - wind_way
@@ -385,42 +426,65 @@ class Base:
         self._values = data
         valueList = []
         labelList = []
-        labelTemperature = []
-        labelWind_way = []
-        labelWind_speed = []
-        labelAir_pressure = []
-        labelWater_pressure = []
         for i in range(len(self._values) - 1):
             valtmp = []
+            lebtmp = []
             datetimeData = datetime.strptime(self._values[i][0][:-6], "%Y-%m-%d %H:%M:%S")# 0 - datetime, 1 - place, 2 - placeName, 3 - temperature, 4 - wind_way, 5 - wind_speed, 6 - air_pressure, 7 - water_pressure, 8 - weather
             d = datetimeData
             valtmp.append(float(d.year) / 10000)
             valtmp.append(float(d.month) / 100)
             valtmp.append(float(d.day)  / 100) # 0 - date
             valtmp.append(float(d.hour)  / 100)
-            valtmp.append(float(self._values[i][1]) / 100000) # 1 - place
-            valtmp.append(float(self._values[i][3]) / 100) # 3 - temperature
+            valtmp.append(float(self._values[i][1] - 30000) / 10000) # 1 - place
+            valtmp.append(float(self._values[i][3] + 100) / 10000) # 3 - temperature -
             valtmp.append(float(self._values[i][4]) / 10) # 4 - wind_way
-            valtmp.append(float(self._values[i][5]) / 100) # 5 - wind_speed
+            valtmp.append(float(self._values[i][5]) / 10000) # 5 - wind_speed -
+            valtmp.append(float(self._values[i][6]) / 10000) # 6 - air_pressure
+            valtmp.append(float(self._values[i][7]) / 10000) # 7 - water_pressure
+            lebtmp.append(float(self._values[i + 1][3] + 100) / 10000)# 3 - temperature
+            lebtmp.append(float(self._values[i + 1][4]) / 10)# 4 - wind_way
+            lebtmp.append(float(self._values[i + 1][5]) / 10000)# 5 - wind_speed
+            lebtmp.append(float(self._values[i + 1][6]) / 10000)# 6 - air_pressure
+            lebtmp.append(float(self._values[i + 1][7]) / 10000)# 7 - water_pressure
+            '''
+            valtmp.append(float(d.year) / 10000)
+            valtmp.append(float(d.month) / 100)
+            valtmp.append(float(d.day)  / 100) # 0 - date
+            valtmp.append(float(d.hour)  / 100)
+            valtmp.append(float(self._values[i][1] - 30000) / 10000) # 1 - place
+            valtmp.append(float(self._values[i][3] + 100) / 10000) # 3 - temperature -
+            valtmp.append(float(self._values[i][4]) / 10) # 4 - wind_way
+            valtmp.append(float(self._values[i][5]) / 10000) # 5 - wind_speed -
             valtmp.append(float(self._values[i][6]) / 1000) # 6 - air_pressure
             valtmp.append(float(self._values[i][7]) / 1000) # 7 - water_pressure
-            labelTemperature.append(float(self._values[i + 1][3]) / 100)# 3 - temperature
-            labelWind_way.append(float(self._values[i + 1][4]) / 10)# 4 - wind_way
-            labelWind_speed.append(float(self._values[i + 1][5]) / 100)# 5 - wind_speed
-            labelAir_pressure.append(float(self._values[i + 1][6]) / 1000)# 6 - air_pressure
-            labelWater_pressure.append(float(self._values[i + 1][7]) / 1000)# 7 - water_pressure
+            lebtmp.append(float(self._values[i + 1][3] + 100) / 10000)# 3 - temperature
+            lebtmp.append(float(self._values[i + 1][4]) / 10)# 4 - wind_way
+            lebtmp.append(float(self._values[i + 1][5]) / 10000)# 5 - wind_speed
+            lebtmp.append(float(self._values[i + 1][6]) / 1000)# 6 - air_pressure
+            lebtmp.append(float(self._values[i + 1][7]) / 1000)# 7 - water_pressure
+
+            valtmp.append(float(d.year) / 10000)
+            valtmp.append(float(d.month) / 100)
+            valtmp.append(float(d.day)  / 100) # 0 - date
+            valtmp.append(float(d.hour)  / 100)
+            valtmp.append(float(self._values[i][1] - 30000) / 10000) # 1 - place
+            valtmp.append(float(self._values[i][3] + 100) / 10000) # 3 - temperature -
+            valtmp.append(float(self._values[i][4]) / 10) # 4 - wind_way
+            valtmp.append(float(self._values[i][5]) / 10000) # 5 - wind_speed -
+            valtmp.append(float(self._values[i][6]) / 10000) # 6 - air_pressure
+            valtmp.append(float(self._values[i][7]) / 10000) # 7 - water_pressure
+            lebtmp.append(float(self._values[i + 1][3] + 100) / 10000)# 3 - temperature
+            lebtmp.append(float(self._values[i + 1][4]) / 10)# 4 - wind_way
+            lebtmp.append(float(self._values[i + 1][5]) / 10000)# 5 - wind_speed
+            lebtmp.append(float(self._values[i + 1][6]) / 10000)# 6 - air_pressure
+            lebtmp.append(float(self._values[i + 1][7]) / 10000)# 7 - water_pressure
+            '''
             valueList.append(valtmp)
-        self._labels.append(labelTemperature)
-        self._labels.append(labelWind_way)
-        self._labels.append(labelWind_speed)
-        self._labels.append(labelAir_pressure)
-        self._labels.append(labelWater_pressure)
+            labelList.append(lebtmp)
         self._values = valueList
-        for l in self._labels:
-            self._train_values, self._test_values, train_labels, test_labels = train_test_split(self._values, l, test_size=0.20, random_state=42)
-            self._train_labels.append(train_labels)
-            self._test_labels.append(test_labels)
-        print(self._train_values[:20], self._test_values[:20])
+        self._labels = labelList
+        self._train_values, self._test_values, self._train_labels, self._test_labels = train_test_split(self._values, self._labels, test_size=0.20, random_state=42)
+        print(self._train_values[:20], self._test_values[:20], self._train_labels[:20], self._test_labels[:20])
 
 # -------------------------------  
 
@@ -460,13 +524,28 @@ class Base:
                 ttype = "Perceptron"
         elif self._methodId == 2:
                 ttype = "Rnn"
-        if name == name:
-            obj.save('./../../../models/' + ttype + "-" + name + ".h5")
+        if self._methodId == 0:
+            if name == name:
+                with open('Thesis/Thesis/models/' + ttype + "-" + name + ".h5", 'wb') as f:
+                        pickle.dump(self._method, f, pickle.HIGHEST_PROTOCOL)
+                        '''
+                        with open('data.pickle', 'rb') as f:
+                            data = pickle.load(f)
+                        '''
+            else:
+                n = str(date.today())
+                t = ttime.localtime()
+                t = ttime.strftime("%M%S", t)
+                    with open('Thesis/Thesis/models/' + n + t + ttype + ".h5", 'wb') as f:
+                        pickle.dump(self._method, f, pickle.HIGHEST_PROTOCOL)
         else:
-            n = str(date.today())
-            t = ttime.localtime()
-            t = ttime.strftime("%M%S", t)
-            obj.save('./../../../models/' + n + t + ttype + ".h5")
+            if name == name:
+                obj.save('Thesis/Thesis/models/' + ttype + "-" + name + ".h5")
+            else:
+                n = str(date.today())
+                t = ttime.localtime()
+                t = ttime.strftime("%M%S", t)
+                obj.save('Thesis/Thesis/models/' + n + t + ttype + ".h5")
 
     def _importNet(self):
         fileInfo = QFileDialog.getOpenFileName()
@@ -506,7 +585,7 @@ class Base:
 
 if __name__ == "__main__":
     b = Base()
-    b._methodId = 1
+    b._methodId = 0
     test = False
     if test:
         b._importNet()
