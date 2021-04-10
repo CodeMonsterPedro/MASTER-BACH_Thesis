@@ -45,7 +45,8 @@ class ForecastSummaryModel:
         return self._weatherNames[id]
 
     def _importNet(self):
-        self._method = keras.models.load_model('../../../../models/fullconnect.h5')
+        pass
+        #self._method = keras.models.load_model('../../../../models/fullconnect.h5')
 
     def _prepareData(self, data):
         pass

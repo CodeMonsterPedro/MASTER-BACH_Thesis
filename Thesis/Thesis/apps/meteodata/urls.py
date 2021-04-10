@@ -9,6 +9,7 @@ urlpatterns = [
     path('forecast/', views.ForecastView.as_view(), name="forecast-main"),
     path('forecast-filter/', views.ForecastChangePage.as_view(), name="forecast-filter"),
     path('forecast-update/', views.ForecastUpdateDataPage.as_view(), name="forecast-update"),
+    path('forecast-update-test-result/', views.ForecastUpdateTestResultPage.as_view(), name="forecast-update-test-result"),
     path('anomaly/', views.AnomalyView.as_view(), name="anomaly-main"),
     path('anomaly-filter/', views.AnomalyChangePage.as_view(), name="anomaly-filter"),
     path('anomaly-update/', views.AnomalyUpdateDataPage.as_view(), name="anomaly-update")

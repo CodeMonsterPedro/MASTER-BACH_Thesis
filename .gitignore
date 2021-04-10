@@ -3,3 +3,4 @@ ex_diploma.docx
 zoom_0.mp4
 .*
 *.txt
+__pycache__/

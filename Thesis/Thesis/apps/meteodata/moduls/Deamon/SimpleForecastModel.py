@@ -45,7 +45,8 @@ class SimpleForecastModel:
         return values
 
     def _importNet(self):
-        self._method = keras.models.load_model('../../../../models/rnn.h5')
+        pass
+        #self._method = keras.models.load_model('../../../../models/rnn.h5')
 
     def _prepareData(self, data):
         pass

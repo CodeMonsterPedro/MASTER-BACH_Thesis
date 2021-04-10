@@ -20,7 +20,6 @@ class MeteodataChangePage(View):
         d = request.POST
         print(d)
         MainMenu.set_context(1)
-        MainMenu.set_count(int(d['count']))
         MainMenu.set_page(int(d['page']))
         MainMenu.search(d['search'])
         try:
@@ -55,7 +54,6 @@ class ForecastChangePage(View):
         d = request.POST
         print(d)
         MainMenu.set_context(2)
-        MainMenu.set_count(int(d['count']))
         MainMenu.set_page(int(d['page']))
         MainMenu.search(d['search'])
         try:
@@ -76,6 +74,16 @@ class ForecastUpdateDataPage(View):
         return redirect('meteodata/forecast/')
 
 
+class ForecastUpdateTestResultPage(View):
+
+    def post(self, request):
+        d = request.POST
+        print(d)
+        MainMenu.set_context(2)
+        MainMenu._make_forecast_test()
+        return redirect('meteodata/forecast/')
+
+
 class AnomalyView(ListView):
 
     def get(self, request):
@@ -90,7 +98,6 @@ class AnomalyChangePage(View):
         d = request.POST
         print(d)
         MainMenu.set_context(3)
-        MainMenu.set_count(int(d['count']))
         MainMenu.set_page(int(d['page']))
         MainMenu.search(d['search'])
         try:

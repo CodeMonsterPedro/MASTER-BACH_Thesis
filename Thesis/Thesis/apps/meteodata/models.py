@@ -23,6 +23,28 @@ class Meteodata(models.Model):
         verbose_name_plural = "Метеоданные"
 
 
+class ClearMeteodata(models.Model):
+
+    id = models.BigAutoField("id", primary_key=True)
+    datetime = models.DateTimeField("Дата и время")
+    place = models.BigIntegerField("Код места")
+    placeName = models.CharField("Место", max_length=80)
+    temperature = models.FloatField("Температура воздуха")
+    wind_way = models.BigIntegerField("Направление ветра")
+    wind_speed = models.FloatField("Скорость ветра")
+    air_pressure = models.FloatField("Атмосферное давление")
+    water_pressure = models.FloatField("Давление моря")
+    weather = models.TextField("Погодное явление")
+
+    def __str__(self):
+        return self.id
+
+    class Meta:
+
+        verbose_name = "Чистые метеоданные"
+        verbose_name_plural = "Чистые метеоданные"
+
+
 class ForecastMeteodata(models.Model):
 
     id = models.BigAutoField("id", primary_key=True)
@@ -43,6 +65,28 @@ class ForecastMeteodata(models.Model):
 
         verbose_name = "Спрогнозированные метеоданные"
         verbose_name_plural = "Спрогнозированные метеоданные"
+
+
+class ClearForecastMeteodata(models.Model):
+
+    id = models.BigAutoField("id", primary_key=True)
+    datetime = models.DateTimeField("Дата и время")
+    place = models.BigIntegerField("Код места")
+    placeName = models.CharField("Место", max_length=80)
+    temperature = models.FloatField("Температура воздуха")
+    wind_way = models.BigIntegerField("Направление ветра")
+    wind_speed = models.FloatField("Скорость ветра")
+    air_pressure = models.FloatField("Атмосферное давление")
+    water_pressure = models.FloatField("Давление моря")
+    weather = models.TextField("Погодное явление")
+
+    def __str__(self):
+        return self.id
+
+    class Meta:
+
+        verbose_name = "Чистые спрогнозированные метеоданные"
+        verbose_name_plural = "Чистые спрогнозированные метеоданные"
 
 
 class MeteodataAnomalies(models.Model):

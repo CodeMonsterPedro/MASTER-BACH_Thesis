@@ -5,7 +5,7 @@ from ..DB import DBControl
 from datetime import datetime, date, time, timedelta
 
 
-class SimpleForecastModel:
+class AnomalyModel:
 
     def __init__(self):
         self._db = DBControl()
@@ -34,7 +34,8 @@ class SimpleForecastModel:
         return values
 
     def _importNet(self):
-        self._method = keras.models.load_model('../../../../models/autoencoder.h5')
+        pass
+        #self._method = keras.models.load_model('../../../../models/autoencoder.h5')
 
     def _prepareData(self, data):
         pass

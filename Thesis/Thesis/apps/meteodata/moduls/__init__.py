@@ -1,130 +1,62 @@
-from ..models import Meteodata, ForecastMeteodata, MeteodataAnomalies
-from django.db.models import Q
 from .Deamon.ForecastDeamon import ForecastDeamon
 from .MeteodataMiner import MeteodataMiner
+from .DataReader import DataReader
 
 
 class MainMenu:
 
     Deamon = ForecastDeamon()
     Miner = MeteodataMiner()
+    Reader = DataReader()
     currentContext = 1
-    meteodata_page = 1
-    meteodata_count = 50
-    meteodata_search = ''
-    is_data_updated = False
-    meteodata = Meteodata.objects.all()
-    forecast_page = 1
-    forecast_count = 50
-    forecast_search = ''
-    is_forecast_updated = False
-    forecast = ForecastMeteodata.objects.all()
-    anomaly_page = 1
-    anomaly_count = 50
-    anomaly_search = ''
-    is_anomaly_updated = False
-    anomaly = MeteodataAnomalies.objects.all()
 
     def get_context():
         if MainMenu.currentContext == 1:
             context = {
-                "meteodata_page": MainMenu.meteodata_page,
-                "meteodata_count": MainMenu.meteodata_count,
-                "meteodata_search": MainMenu.meteodata_search,
-                "meteodata_max_pages": MainMenu.get_max_pages(),
+                "meteodata_page": MainMenu.Reader._meteodata_page,
+                "meteodata_search": MainMenu.Reader._meteodata_search,
+                "meteodata_max_pages": MainMenu.get_max_pages(1),
                 "meteodata_top_labels": MainMenu.get_top_labels(),
-                "meteodata": MainMenu.meteodata[(MainMenu.meteodata_count * MainMenu.meteodata_page):(MainMenu.meteodata_count * MainMenu.meteodata_page) + MainMenu.meteodata_count]
+                "meteodata": MainMenu.Reader._meteodata,
+                "clear_meteodata_page": MainMenu.Reader._clear_meteodata_page,
+                "clear_meteodata_search": MainMenu.Reader._clear_meteodata_search,
+                "clear_meteodata_max_pages": MainMenu.get_max_pages(2),
+                "clear_meteodata": MainMenu.Reader._clear_meteodata
             }
         elif MainMenu.currentContext == 2:
             context = {
-                "forecast": MainMenu.forecast[(MainMenu.forecast_count * MainMenu.forecast_page):(MainMenu.forecast_count * MainMenu.forecast_page) + MainMenu.forecast_count],
-                "forecast_page": MainMenu.forecast_page,
-                "forecast_count": MainMenu.forecast_count,
-                "forecast_search": MainMenu.forecast_search,
-                "forecast_max_pages": MainMenu.get_max_pages(),
-                "forecast_top_labels": MainMenu.get_top_labels()
+                "forecast": MainMenu.Reader._forecast,
+                "forecast_page": MainMenu.Reader._forecast_page,
+                "forecast_search": MainMenu.Reader._forecast_search,
+                "forecast_max_pages": MainMenu.get_max_pages(3),
+                "forecast_top_labels": MainMenu.get_top_labels(),
+                "clear_forecast": MainMenu.Reader._clear_forecast,
+                "clear_forecast_page": MainMenu.Reader._clear_forecast_page,
+                "clear_forecast_search": MainMenu.Reader._clear_forecast_search,
+                "clear_forecast_max_pages": MainMenu.get_max_pages(4),
             }
         elif MainMenu.currentContext == 3:
             context = {
-                "anomaly": MainMenu.anomaly[(MainMenu.anomaly_count * MainMenu.anomaly_page):(MainMenu.anomaly_count * MainMenu.anomaly_page) + MainMenu.anomaly_count],
-                "anomaly_page": MainMenu.anomaly_page,
-                "anomaly_count": MainMenu.anomaly_count,
-                "anomaly_search": MainMenu.anomaly_search,
-                "anomaly_max_pages": MainMenu.get_max_pages(),
-                "anomaly_top_labels": MainMenu.get_top_labels(),
+                "anomaly": MainMenu.Reader._anomaly,
+                "anomaly_page": MainMenu.Reader._anomaly_page,
+                "anomaly_search": MainMenu.Reader._anomaly_search,
+                "anomaly_max_pages": MainMenu.get_max_pages(5),
+                "anomaly_top_labels": MainMenu.get_top_labels()
             }
         context.update(
             {
+                "rows_count": MainMenu.Reader._rows_count,
                 "menu_status": MainMenu.get_menu_status(),
                 "submenu_status": MainMenu.get_submenu_status()
             }
         )
         return context
 
-    def set_page(num):
-        if MainMenu.currentContext == 1:
-            MainMenu.meteodata_page = num
-        elif MainMenu.currentContext == 2:
-            MainMenu.forecast_page = num
-        elif MainMenu.currentContext == 3:
-            MainMenu.anomaly_page = num
-
-    def set_count(num):
-        if MainMenu.currentContext == 1:
-            MainMenu.meteodata_count = num
-        elif MainMenu.currentContext == 2:
-            MainMenu.forecast_count = num
-        elif MainMenu.currentContext == 3:
-            MainMenu.anomaly_count = num
+    def set_page(num, tableId):
+        MainMenu.Reader.set_page(num, tableId)
 
     def search(search):
-        temp = 0
-        if MainMenu.currentContext == 1:
-            if search != '':
-                MainMenu.meteodata_search = search
-                MainMenu.meteodata = Meteodata.objects.filter(
-                Q(id__contains=search) | 
-                Q(datetime__contains=search) | 
-                Q(place__contains=search) | 
-                Q(placeName__contains=search) | 
-                Q(temperature__contains=search) | 
-                Q(wind_way__contains=search) | 
-                Q(wind_speed__contains=search) | 
-                Q(air_pressure__contains=search) | 
-                Q(water_pressure__contains=search) | 
-                Q(weather__contains=search)
-                )
-            else:
-                MainMenu.meteodata = Meteodata.objects.all()
-        elif MainMenu.currentContext == 2:
-            if search != '':
-                MainMenu.forecast_search = search
-                MainMenu.forecast = ForecastMeteodata.objects.filter(
-                Q(id__contains=search) | 
-                Q(datetime__contains=search) | 
-                Q(place__contains=search) | 
-                Q(placeName__contains=search) | 
-                Q(temperature__contains=search) | 
-                Q(wind_way__contains=search) | 
-                Q(wind_speed__contains=search) | 
-                Q(air_pressure__contains=search) | 
-                Q(water_pressure__contains=search) | 
-                Q(weather__contains=search)
-                )
-            else:
-                MainMenu.forecast = ForecastMeteodata.objects.all()
-        elif MainMenu.currentContext == 3:
-            if search != '':
-                MainMenu.anomaly_search = search
-                MainMenu.anomaly = MeteodataAnomalies.objects.filter(
-                Q(id__contains=search) | 
-                Q(meteodata_id__contains=search) | 
-                Q(fieldname__contains=search) | 
-                Q(value__contains=search) | 
-                Q(anomaly__contains=search)
-                )
-            else:
-                MainMenu.anomaly = MeteodataAnomalies.objects.all()
+        MainMenu.Reader.search(search)
 
     def set_context(num):
         if num >= 1 and num <= 3:
@@ -153,7 +85,12 @@ class MainMenu:
 
     def get_submenu_status():
         print('get_submenu_status')
-        if MainMenu.currentContext in [1, 2]:
+        if MainMenu.currentContext == 1:
+            if MainMenu.Miner.meteodataUpdateStatus():
+                return 'hide'
+            else:
+                return 'active'
+        elif MainMenu.currentContext == 2:
             if MainMenu.Deamon.forecastUpdateStatus():
                 return 'hide'
             else:
@@ -173,32 +110,13 @@ class MainMenu:
         elif MainMenu.currentContext == 3:
             return ['№', '№ метеоданных', 'Имя поля', 'Значение', 'Описание аномалии']
 
-    def get_max_pages():
-        print('get_max_pages')
-        if MainMenu.currentContext == 1:
-            size = Meteodata.objects.values('id').count()
-            val = int(size // MainMenu.meteodata_count)
-            if size % MainMenu.meteodata_count != 0:
-                val += 1
-            return val
-        elif MainMenu.currentContext == 2:
-            size = ForecastMeteodata.objects.values('id').count()
-            val = int(size // MainMenu.forecast_count)
-            if size % MainMenu.forecast_count != 0:
-                val += 1
-            return val        
-        elif MainMenu.currentContext == 3:
-            size = MeteodataAnomalies.objects.values('id').count()
-            val = int(size // MainMenu.anomaly_count)
-            if size % MainMenu.anomaly_count != 0:
-                val += 1
-            return val
+    def get_max_pages(tableId):
+        return MainMenu.Reader.get_max_pages(tableId)
+
+    def _make_forecast_test():
+        print('make_forecast_test')
+        MainMenu.Deamon._make_test()
 
     def sort(dataName):
         print('sort data')
-        if MainMenu.currentContext == 1:
-            MainMenu.meteodata.order_by(dataName)
-        elif MainMenu.currentContext == 2:
-            MainMenu.forecast.order_by(dataName)       
-        elif MainMenu.currentContext == 3:
-            MainMenu.anomaly.order_by(dataName)
+        MainMenu.Reader.sort(MainMenu.currentContext, dataName)

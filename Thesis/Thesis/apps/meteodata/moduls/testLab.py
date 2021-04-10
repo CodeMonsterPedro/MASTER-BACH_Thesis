@@ -251,21 +251,16 @@ class Base:
 
     def _startTraining(self):
         self._method.fit(self._train_values, self._train_labels, epochs=self._epochs)
-        self._saveNet(obj=self._method)
+        if self._methodId in [1, 2]:
+            self._saveNet(obj=self._method)
+        elif self._methodId == 0:
+            self._saveNet(obj=self._method.encoder, name='encoder')
+            self._saveNet(obj=self._method.decoder, name='decoder')
         test_loss, test_acc = self._method.evaluate(self._test_values,  self._test_labels, verbose=2)
         self._predictions = self._method.predict(self._test_values)
         print(self._predictions) 
         print('loss', test_loss)
         print('acc', test_acc)
-    
-    def _startRnnTraining(self):
-        self._method.fit(self._train_values, self._train_labels, epochs=self._epochs)
-        test_loss, test_acc = self._method.evaluate(self._test_values,  self._test_labels, verbose=2)
-        self._predictions = self._method.predict(self._test_values)
-        print(self._predictions) 
-        print('loss', test_loss)
-        print('acc', test_acc)
-        self._saveNet(name='Rnn-temperature', obj=self._method)
 
     def buildAutoencoder(self):
         data = self._getStartData()# self._train_values, self._train_labels, self._test_values,  self._test_labels, self._values, self._labels
@@ -524,28 +519,13 @@ class Base:
                 ttype = "Perceptron"
         elif self._methodId == 2:
                 ttype = "Rnn"
-        if self._methodId == 0:
-            if name == name:
-                with open('Thesis/Thesis/models/' + ttype + "-" + name + ".h5", 'wb') as f:
-                        pickle.dump(self._method, f, pickle.HIGHEST_PROTOCOL)
-                        '''
-                        with open('data.pickle', 'rb') as f:
-                            data = pickle.load(f)
-                        '''
-            else:
-                n = str(date.today())
-                t = ttime.localtime()
-                t = ttime.strftime("%M%S", t)
-                    with open('Thesis/Thesis/models/' + n + t + ttype + ".h5", 'wb') as f:
-                        pickle.dump(self._method, f, pickle.HIGHEST_PROTOCOL)
+        if name == name:
+            obj.save('Thesis/Thesis/models/' + ttype + "-" + name + ".h5")
         else:
-            if name == name:
-                obj.save('Thesis/Thesis/models/' + ttype + "-" + name + ".h5")
-            else:
-                n = str(date.today())
-                t = ttime.localtime()
-                t = ttime.strftime("%M%S", t)
-                obj.save('Thesis/Thesis/models/' + n + t + ttype + ".h5")
+            n = str(date.today())
+            t = ttime.localtime()
+            t = ttime.strftime("%M%S", t)
+            obj.save('Thesis/Thesis/models/' + n + t + ttype + ".h5")
 
     def _importNet(self):
         fileInfo = QFileDialog.getOpenFileName()
@@ -600,7 +580,7 @@ if __name__ == "__main__":
             b._startTraining()
         elif b._methodId == 2:
             b.buildRnn()
-            b._startRnnTraining()
+            b._startTraining()
         else:
             b.buildAutoencoder()
             b._startTraining()

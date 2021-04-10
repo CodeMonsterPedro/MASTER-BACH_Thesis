@@ -1,5 +1,6 @@
 from .ForecastSummaryModel import ForecastSummaryModel
 from .SimpleForecastModel import SimpleForecastModel
+from .AnomalyModel import AnomalyModel
 from datetime import datetime
 
 
@@ -36,7 +37,8 @@ class ForecastDeamon:
             else:
                 return True
         except:
-            self._cacheFile.close()
+            if not isinstance(self._cacheFile, int):
+                self._cacheFile.close()
             return False
 
     def anomaliesScanStatus(self):
@@ -54,7 +56,8 @@ class ForecastDeamon:
             else:
                 return True
         except:
-            self._cacheFile.close()
+            if not isinstance(self._cacheFile, int):
+                self._cacheFile.close()
             return False
 
     def _updateShort(self):
@@ -62,6 +65,10 @@ class ForecastDeamon:
 
     def _makeSummary(self):
         self._summary.getForecastSummary()
+
+    def _make_test(self):
+        print('good test')
+        pass
 
     def _makeLog(self, name=''):        
         self._cacheFile = open('cacheFile.txt', 'r')

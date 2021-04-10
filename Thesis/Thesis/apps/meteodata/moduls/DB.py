@@ -5,7 +5,7 @@ from datetime import date
 class DBControl():
     def __init__(self):
         self._connect()
-        self._tables = ('meteodata', 'forecastmeteidata', 'meteodataanomalies')
+        self._tables = ('meteodata', 'forecastmeteodata', 'clearmeteodata', 'clearforecastmeteodata', 'meteodataanomalies')
         self._curTable = 0
         self._lastQuere = ''
 
@@ -16,6 +16,12 @@ class DBControl():
 
     def removeForecast(self, id):
         self._curs.execute('DELETE from public.meteodata_forecastmeteodata WHERE id ={}'.format(str(id)))
+
+    def removeClearMeteodata(self, id):
+        self._curs.execute('DELETE from public.meteodata_clearmeteodata WHERE id ={}'.format(str(id)))
+
+    def removeClearForecast(self, id):
+        self._curs.execute('DELETE from public.meteodata_clearforecastmeteodata WHERE id ={}'.format(str(id)))
 
     def removeAnomalies(self, id):
         self._curs.execute('DELETE from public.meteodata_meteodataanomalies WHERE id ={}'.format(str(id)))
@@ -29,7 +35,15 @@ class DBControl():
     def insertForecast(self, data):
         _id = int(self.getMaxId(self._tables[3]) + 1)
         self._curs.execute("INSERT INTO public.meteodata_forecastmeteodata VALUES(DEFAULT, '" + data[0] + "', " + data[1] + ", '" + data[2] + "', " + data[3] + ", " + data[4] + ", " + data[5] + ", " + data[6] + ", " + data[7] + ", '{" + data[8] + "}')")
-        
+
+    def insertClearMeteodata(self, data):
+        _id = int(self.getMaxId(self._tables[2]) + 1)
+        self._curs.execute("INSERT INTO public.meteodata_clearmeteodata VALUES(DEFAULT, '" + data[0] + "', " + data[1] + ", '" + data[2] + "', " + data[3] + ", " + data[4] + ", " + data[5] + ", " + data[6] + ", " + data[7] + ", '{" + data[8] + "}')")
+
+    def insertClearForecast(self, data):
+        _id = int(self.getMaxId(self._tables[3]) + 1)
+        self._curs.execute("INSERT INTO public.meteodata_clearforecastmeteodata VALUES(DEFAULT, '" + data[0] + "', " + data[1] + ", '" + data[2] + "', " + data[3] + ", " + data[4] + ", " + data[5] + ", " + data[6] + ", " + data[7] + ", '{" + data[8] + "}')")    
+    
     def insertAnomalies(self, data):
         _id = int(self.getMaxId(self._tables[0]) + 1)
         self._curs.execute("INSERT INTO public.meteodata_meteodataanomalies VALUES(DEFAULT," + data[0] + ", '{" + data[1] + "}', '{" + data[2] + "}', '{" + data[3] + "}')")
@@ -37,10 +51,16 @@ class DBControl():
 # updaters
 
     def updateMeteodata(self, data):
-        self._curs.execute("UPDATE public.meteodata_meteodata SET datetime='" + data[0] + "', place=" + str(data[1]) + ", \"placeName\"" + data[2] + "', temperature=" + str(data[3]) + ", wind_way=" + str(data[4]) + ", wind_speed=" + str(data[5]) + ", air_pressure" + str(data[6]) + ", water_pressure" + str(data[7]) + ", weather='{" + data[8] + "}' WHERE id=" + str(data[0]))
+        self._curs.execute("UPDATE public.meteodata_meteodata SET datetime='" + data[0] + "', place=" + str(data[1]) + ", \"placeName\"" + data[2] + "', temperature=" + str(data[3]) + ", wind_way=" + str(data[4]) + ", wind_speed=" + str(data[5]) + ", air_pressure=" + str(data[6]) + ", water_pressure=" + str(data[7]) + ", weather='{" + data[8] + "}' WHERE id=" + str(data[0]))
 
     def updateForecast(self, data):
-        self._curs.execute("UPDATE public.meteodata_forecastmeteodata SET datetime='" + data[0] + "', place=" + str(data[1]) + ", \"placeName\"" + data[2] + "', temperature=" + str(data[3]) + ", wind_way=" + str(data[4]) + ", wind_speed=" + str(data[5]) + ", air_pressure" + str(data[6]) + ", water_pressure" + str(data[7]) + ", weather='{" + data[8] + "}' WHERE id=" + str(data[0]))
+        self._curs.execute("UPDATE public.meteodata_forecastmeteodata SET datetime='" + data[0] + "', place=" + str(data[1]) + ", \"placeName\"" + data[2] + "', temperature=" + str(data[3]) + ", wind_way=" + str(data[4]) + ", wind_speed=" + str(data[5]) + ", air_pressure=" + str(data[6]) + ", water_pressure=" + str(data[7]) + ", weather='{" + data[8] + "}' WHERE id=" + str(data[0]))
+
+    def updateClearMeteodata(self, data):
+        self._curs.execute("UPDATE public.meteodata_clearmeteodata SET datetime='" + data[0] + "', place=" + str(data[1]) + ", \"placeName\"" + data[2] + "', temperature=" + str(data[3]) + ", wind_way=" + str(data[4]) + ", wind_speed=" + str(data[5]) + ", air_pressure=" + str(data[6]) + ", water_pressure=" + str(data[7]) + ", weather='{" + data[8] + "}' WHERE id=" + str(data[0]))
+
+    def updateClearForecast(self, data):
+        self._curs.execute("UPDATE public.meteodata_clearforecastmeteodata SET datetime='" + data[0] + "', place=" + str(data[1]) + ", \"placeName\"" + data[2] + "', temperature=" + str(data[3]) + ", wind_way=" + str(data[4]) + ", wind_speed=" + str(data[5]) + ", air_pressure=" + str(data[6]) + ", water_pressure=" + str(data[7]) + ", weather='{" + data[8] + "}' WHERE id=" + str(data[0]))
 
     def updateAnomalies(self, data):
         self._curs.execute("UPDATE public.meteodata_meteodataanomalies SET meteodata_id=" + str(data[1]) + ", fieldname='{" + data[2] + "}', value='{" + data[3] + "}', anomaly='{" + data[4] + "}' WHERE id=" + str(data[0]))
@@ -58,6 +78,22 @@ class DBControl():
     def getForecast(self, filter='id, datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather', where=''):
         self._curTable = 1
         tmp = 'SELECT {} FROM public.meteodata_forecastmeteodata {}'.format(filter, where)
+        self._lastQuere = tmp
+        self._curs.execute(tmp)
+        records = self._refactorRecords(self._curs.fetchall())
+        return records
+
+    def getClearMeteodata(self, filter='id, datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather', where=''):
+        self._curTable = 3
+        tmp = 'SELECT {} FROM public.meteodata_clearmeteodata {}'.format(filter, where)
+        self._lastQuere = tmp
+        self._curs.execute(tmp)
+        records = self._refactorRecords(self._curs.fetchall())
+        return records
+
+    def getClearForecast(self, filter='id, datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather', where=''):
+        self._curTable = 4
+        tmp = 'SELECT {} FROM public.meteodata_clearforecastmeteodata {}'.format(filter, where)
         self._lastQuere = tmp
         self._curs.execute(tmp)
         records = self._refactorRecords(self._curs.fetchall())

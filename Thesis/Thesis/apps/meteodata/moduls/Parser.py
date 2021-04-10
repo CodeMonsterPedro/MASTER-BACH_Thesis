@@ -13,24 +13,22 @@ class MyParser:
     def __init__(self):
         self._rawData = []
         self._urls = ['https://meteopost.com/weather/archive/']
-        self._conn = psycopg2.connect(dbname='Weather', user='postgres', password='12345', host='localhost')
-        self._curs = self._conn.cursor()
-        self._f = 0
+        #self._curs = self._conn.cursor()
+        #self._f = 0
 
     def StartParse(self):
-        citySet = self.raw_update1()
-        self.prepare_data1(citySet)
-        if not isinstance(p._f, int):
-            p._f.close()
-        p._curs.close()
-        p._conn.close()
+        citySet, data = self.raw_update1()
+        '''if not isinstance(p._f, int):
+            p._f.close()'''
+        return self.prepare_data1(citySet, data)
 
-    def raw_update1(self, url='https://meteopost.com/weather/archive/', begin='', end=''):
-        try:
+    def raw_update1(self, url='https://meteopost.com/weather/archive/', startParseRequest='', endParseRequest=''):
+        '''try:
             self._f.close()
         except:
             self._f = 0
-        self._f = open('/home/max/Projects/BACH_Thesis/data.txt', 'a+')
+        self._f = open('/home/max/Projects/BACH_Thesis/data.txt', 'a+')'''
+        resultList = []
         monthSet = {'value': 0, 'text': 0}
         yearSet = {'value': 0, 'text': 0}
         citySet = {'value': 0, 'text': 0}
@@ -38,54 +36,21 @@ class MyParser:
         # get city
         r = requests.get(url)
         html = bs(r.content, 'html.parser')
-        items = html.find_all(attrs={'name': 'city'})
-        temp1 = []
-        temp2 = []
-        for child in items[0].children:
-            if not isinstance(child, NavigableString):
-                temp1.append(child['value'])
-                temp2.append(child.string)
-        badCitySet['value'] = temp1
-        badCitySet['text'] = temp2
-        temp1 = []
-        temp2 = []
-        for child in items[1].children:
-            if not isinstance(child, NavigableString):
-                temp1.append(child['value'])
-                temp2.append(child.string)
-        citySet['value'] = temp1
-        citySet['text'] = temp2
+        badCitySet['value'], badCitySet['text'] = self._getSetData(name='city', html=html, part=0)
+        citySet['value'], citySet['text'] = self._getSetData(name='city', html=html, part=1)
         # get month and year
-        temp1 = []
-        temp2 = []
-        items = html.find_all(attrs={'name': 'y'})
-        for child in items[0].children:
-            if not isinstance(child, NavigableString):
-                temp1.append(child['value'])
-                temp2.append(child.string)
-        yearSet['value'] = temp1
-        yearSet['text'] = temp2
-        temp1 = []
-        temp2 = []
-        items = html.find_all(attrs={'name': 'm'})
-        for child in items[0].children:
-            if not isinstance(child, NavigableString):
-                temp1.append(child['value'])
-                temp2.append(child.string)
-        monthSet['value'] = temp1
-        monthSet['text'] = temp2
+        yearSet['value'], yearSet['text'] = self._getSetData(name='y', html=html, part=0)
+        monthSet['value'], monthSet['text'] = self._getSetData(name='m', html=html, part=0)
         r.close()
-        flag = False
+        startParseFlag = False
         for year in yearSet['value']:
-            d = '1'
             y = year
-            arc = '2'
             for month in monthSet['value']:
                 m = month
                 days = str(monthrange(int(y), int(m))[1])
                 for city in citySet['value']:
                     city = city
-                    req = 'd={}&m={}&y={}&city={}&arc=2&days={}'.format(d, m, y, city, days)
+                    req = 'd=1&m={}&y={}&city={}&arc=2&days={}'.format(m, y, city, days)
                     print(req)
                     hd = {
                         "Host": "meteopost.com",
@@ -103,17 +68,16 @@ class MyParser:
                         "Upgrade-Insecure-Requests": "1",
                         "TE": "Trailers"
                     }
-                    if req == begin or begin == '':
-                        flag = True
-                    if not flag:
+                    if req == startParseRequest or startParseRequest == '':
+                        startParseFlag = True
+                    if not startParseFlag:
                         continue
-                    if req == end:
+                    if req == endParseRequest:
                         return
-                    time.sleep(0.15)
+                    time.sleep(0.15) # not to ddos timer)
                     r = requests.post(url, data=req.encode(), headers=hd, stream=True)
                     html = bs(r.content, 'html5lib')
                     items = html.find_all("table")
-                    print(len(items))
                     html = items[3]
                     items = html.find_all("tr")
                     for i in range(len(items)):
@@ -148,42 +112,55 @@ class MyParser:
                                     try:
                                         b = x.b
                                         s = s + '_' + b.string
-                                    except:
+                                    except: 
+                                        #  set _ symbol for delimiter 
                                         if not isinstance(x, type(None)):
                                             s = s + '_' + x.get_text()
                                         else:
-                                            s = s + '_='
+                                            s = s + '_=' # if data missing = symbol is placeholder
                         print('SSS - ', s)
-                        self._f.write(s)
+                        resultList.append(s + '&&' + req + '\n')
+                        '''self._f.write(s)
                         self._f.write('&&' + req)
-                        self._f.write('\n')
+                        self._f.write('\n')'''
                     r.close()
-        self._f.close()
-        return citySet
+        # self._f.close()
+        return citySet, resultList
 
-    def prepare_data1(self, citySet):
-        self._f = open('/home/max/Projects/BACH_Thesis/data', 'r')
-        lines = self._f.readlines()
+    def _getSetData(self, name='', html='', part=0):
+        items = html.find_all(attrs={'name': name})
+        temp1 = []
+        temp2 = []
+        for child in items[part].children:
+            if not isinstance(child, NavigableString):
+                temp1.append(child['value'])
+                temp2.append(child.string)
+        return temp1, temp2
+
+    def prepare_data1(self, citySet, data):
+        resultList = []
+        '''self._f = open('/home/max/Projects/BACH_Thesis/data', 'r')
+        data = self._f.readlines()'''
         r = re.compile('^days=[0-9](2)[\n]$')
         i = 0
         while True:
-            line = lines[i]
-            nextLine = lines[i+1]
+            line = data[i]
+            nextLine = data[i+1]
             temp = str(line[-1:-9:-1])
             if temp[::-1] not in ('days=28\n', 'days=29\n', 'days=30\n', 'days=31\n'):
                 print(list(temp[::-1]))
-                lines[i] = lines[i].rstrip() + nextLine
-                lines.pop(i+1)
+                data[i] = data[i].rstrip() + nextLine
+                data.pop(i+1)
             i = i + 1
-            if i + 1 == len(lines):
+            if i + 1 == len(data):
                 break
-        self._f.close()
+        '''self._f.close()
         self._f = open('/home/max/Projects/BACH_Thesis/data', 'w')
-        self._f.writelines(lines)
+        self._f.writelines(data)'''
         i = 0
         headers = []
         while True:
-            line = lines[i]
+            line = data[i]
             baseList = line.split('&&')
             if line[0] == '&':
                 print(baseList[1])
@@ -216,14 +193,14 @@ class MyParser:
             xx = d['Час'].split(':')
             if int(xx[0]) > 24:
                 d['Час'] = '12:00'
-            self._curs.execute("INSERT INTO public.meteodata VALUES(DEFAULT, '" + str(d['y']) + "-" + str(d['m']) + "-" + str(d['День']) + " " + str(d['Час']) + ":00', " + str(d['city']) + ", '" + citySet[d['city']] + "', " + str(d['Темп. Возд']) + ", " + str(d['Ветер']) + ", " + str(d['Скор ветра']) + ", " + str(d['Давл станц']) + ", " + str(d['Давл моря']) + ", '{" + str(d['Явления погоды']) + "}')")
-            self._conn.commit()
+            resultList.append(d)
             i = i + 1
                 #11-3
                 #4-10
-            if i == len(lines):
+            if i == len(data):
                 break
-        self._f.close()     
+        # self._f.close()
+        return citySet, resultList   
 
 if __name__ == "__main__":
     pass
