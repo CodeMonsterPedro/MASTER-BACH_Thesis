@@ -64,9 +64,9 @@ Add(string query)
 }
 
 DataManager -up-* DataReader
-DataManager -up-* DataWriter
+DataManager -down-* DataWriter
 DB *-up- DataReader
-DB *-up- DataWriter
+DB *-down- DataWriter
 DataWriter -left-> DataMiner
 DataWriter --* ForecastDeamon
 DataMiner -left-> Parser
