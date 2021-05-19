@@ -7,7 +7,7 @@ class DataManager{
 List<Row> data
 List<List<string>> showList
 string viewRule = ""
-
+ 
 _Show()
 DB CreateDB()
 FilterBy(viewRule)
