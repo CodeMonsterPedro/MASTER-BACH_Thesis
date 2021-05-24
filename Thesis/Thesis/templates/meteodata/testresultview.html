@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title%}Результаты{% endblock %}
+
+{% block menu%}
+    <div name="menu" class="menu-row">
+    <a href="{% url 'meteodata-main' %}" class="{{menu_status.0}}">Просмотр метеоданных</a>
+    <a href="{% url 'forecast-main' %}" class="{{menu_status.1}}">Прогнозирование метеоданных</a>
+    <a href="{% url 'anomaly-main' %}" class="{{menu_status.2}}">Анализ метеоданных</a>
+    </div>
+{% endblock menu%}
+{% block submenu%}
+{% endblock submenu%}
+
+{% block content%}
+
+<div class="block block-center">
+    <div name="diagrams">
+    </div>
+    <div><span>Обработано записей метеоданных: {{ all_records_count}}</span></div>
+    <div><span>Обработано записей очищеных метеоданных: {{ clear_records_count}}</span></div>
+    <div><span>Найдено аномалий в записях: {{ anomalies_count}}</span></div>
+    <div><span>Точность прогнозирования на общих метеоданных: {{ all_result_persentage}}</span></div>
+    <div><span>Точность прогнозирования на очищеных метеоданных: {{ clear_result_persentage}}</span></div>
+</div>
+
+{% endblock %}

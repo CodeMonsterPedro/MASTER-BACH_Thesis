@@ -8,9 +8,9 @@
     <a href="{% url 'meteodata-main' %}" class="{{menu_status.0}}">Просмотр метеоданных</a>
     <a href="{% url 'forecast-main' %}" class="{{menu_status.1}}">Прогнозирование метеоданных</a>
     <a href="{% url 'anomaly-main' %}" class="{{menu_status.2}}">Анализ метеоданных</a>
-    <form class="button {{ submenu_status.0}}" action="{% url 'forecast-update' %}" method="post">
+    <form class="button {{ submenu_status.0}}" action="{% url 'forecast-update-test-result' %}" method="post">
         {% csrf_token %}
-        <button type="submit">Обновить данные</button>
+        <button type="submit">Провести тестирование</button>
     </form>
     </div>
 {% endblock menu%}
@@ -38,7 +38,13 @@
         <thead>
             <tr class="main-table-labels">
                 {% for row in forecast_top_labels%}
-                    <td class="active"><center>{{ row }}</center></td>
+                    <td class="active">
+                        <form method="post" action="{% url 'forecast-sort' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="field_name" value={{forloop.counter}}>
+                            <center><button type="submit">{{ row }}</button></center>
+                        </form>
+                    </td>
                 {% endfor %}
             </tr>
         </thead>
@@ -76,7 +82,13 @@
         <thead>
             <tr class="main-table-labels">
                 {% for row in forecast_top_labels%}
-                    <td class="active"><center>{{ row }}</center></td>
+                    <td class="active">
+                        <form method="post" action="{% url 'clear-forecast-sort' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="field_name" value={{forloop.counter}}>
+                            <center><button type="submit">{{ row }}</button></center>
+                        </form>
+                    </td>
                 {% endfor %}
             </tr>
         </thead>

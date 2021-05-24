@@ -32,7 +32,13 @@
         <thead>
             <tr class="main-table-labels">
                 {% for row in meteodata_top_labels%}
-                    <td class="active"><center>{{ row }}</center></td>
+                    <td class="active">
+                        <form method="post" action="{% url 'meteodata-sort' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="field_name" value={{forloop.counter}}>
+                            <center><button type="submit">{{ row }}</button></center>
+                        </form>
+                    </td>
                 {% endfor %}
             </tr>
         </thead>
@@ -70,7 +76,13 @@
         <thead>
             <tr class="main-table-labels">
                 {% for row in meteodata_top_labels%}
-                    <td class="active"><center>{{ row }}</center></td>
+                    <td class="active">
+                        <form method="post" action="{% url 'clear-meteodata-sort' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="field_name" value={{forloop.counter}}>
+                            <center><button type="submit">{{ row }}</button></center>
+                        </form>
+                    </td>
                 {% endfor %}
             </tr>
         </thead>
