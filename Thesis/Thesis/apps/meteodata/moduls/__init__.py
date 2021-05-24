@@ -17,27 +17,27 @@ class MainMenu:
                 "meteodata_search": MainMenu.Reader._meteodata_search,
                 "meteodata_max_pages": MainMenu.get_max_pages(1),
                 "meteodata_top_labels": MainMenu.get_top_labels(),
-                "meteodata": MainMenu.Reader._meteodata,
+                "meteodata": MainMenu.Reader.get_data(1),
                 "clear_meteodata_page": MainMenu.Reader._clear_meteodata_page,
                 "clear_meteodata_search": MainMenu.Reader._clear_meteodata_search,
                 "clear_meteodata_max_pages": MainMenu.get_max_pages(2),
-                "clear_meteodata": MainMenu.Reader._clear_meteodata
+                "clear_meteodata": MainMenu.Reader.get_data(2)
             }
         elif MainMenu.currentContext == 2:
             context = {
-                "forecast": MainMenu.Reader._forecast,
+                "forecast": MainMenu.Reader.get_data(3),
                 "forecast_page": MainMenu.Reader._forecast_page,
                 "forecast_search": MainMenu.Reader._forecast_search,
                 "forecast_max_pages": MainMenu.get_max_pages(3),
                 "forecast_top_labels": MainMenu.get_top_labels(),
-                "clear_forecast": MainMenu.Reader._clear_forecast,
+                "clear_forecast": MainMenu.Reader.get_data(4),
                 "clear_forecast_page": MainMenu.Reader._clear_forecast_page,
                 "clear_forecast_search": MainMenu.Reader._clear_forecast_search,
                 "clear_forecast_max_pages": MainMenu.get_max_pages(4),
             }
         elif MainMenu.currentContext == 3:
             context = {
-                "anomaly": MainMenu.Reader._anomaly,
+                "anomaly": MainMenu.Reader.get_data(5),
                 "anomaly_page": MainMenu.Reader._anomaly_page,
                 "anomaly_search": MainMenu.Reader._anomaly_search,
                 "anomaly_max_pages": MainMenu.get_max_pages(5),
@@ -55,8 +55,8 @@ class MainMenu:
     def set_page(num, tableId):
         MainMenu.Reader.set_page(num, tableId)
 
-    def search(search):
-        MainMenu.Reader.search(search)
+    def search(tableId, search):
+        MainMenu.Reader.search(tableId, search)
 
     def set_context(num):
         if num >= 1 and num <= 3:
@@ -64,15 +64,19 @@ class MainMenu:
 
     def data_update():
         print('data_update')
-        MainMenu.Miner.updateMeteodata()
+        #MainMenu.Miner.updateMeteodata()
         
     def forecast_update():
         print('forecast_update')
-        MainMenu.Deamon.update()
+        #MainMenu.Deamon.update()
+
+    def make_forecast_test():
+        print('make_forecast_test')
+        #MainMenu.Deamon._make_test()
 
     def anomaly_update():
         print('anomaly_update')
-        MainMenu.Deamon.scanForAnomalies()
+        #MainMenu.Deamon.scanForAnomalies()
 
     def get_menu_status():
         print('get_menu_status')
@@ -113,10 +117,6 @@ class MainMenu:
     def get_max_pages(tableId):
         return MainMenu.Reader.get_max_pages(tableId)
 
-    def _make_forecast_test():
-        print('make_forecast_test')
-        MainMenu.Deamon._make_test()
-
-    def sort(dataName):
-        print('sort data')
-        MainMenu.Reader.sort(MainMenu.currentContext, dataName)
+    def sort(tableId, dataName):
+        print('sort data', tableId, dataName)
+        MainMenu.Reader.sort(tableId, dataName - 1)

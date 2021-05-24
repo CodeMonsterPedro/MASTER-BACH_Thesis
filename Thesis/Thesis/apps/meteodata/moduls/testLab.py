@@ -12,6 +12,10 @@ import math
 from datetime import datetime, date, time
 import time as ttime
 import pickle
+import re
+import requests
+from bs4 import BeautifulSoup as bs
+from bs4 import NavigableString
 
 
 class AnomalyDetector(Model):
@@ -499,7 +503,9 @@ class Base:
         if self._methodId == 0:
             self._curs.execute("SELECT datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather FROM public.meteodata_meteodata")
             result = self._refactorRecords(self._curs.fetchall())
-            return result
+            self._curs.execute("SELECT datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather FROM public.meteodata_clearmeteodata")
+            result2 = self._refactorRecords(self._curs.fetchall())
+            return (result, result2)
         elif self._methodId == 1:
             self._curs.execute("SELECT datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather FROM public.meteodata_meteodata")
             result = self._refactorRecords(self._curs.fetchall())
@@ -563,26 +569,248 @@ class Base:
         self._curs.close()
         self._conn.close()
 
-if __name__ == "__main__":
-    b = Base()
-    b._methodId = 0
-    test = False
-    if test:
-        b._importNet()
-        data = b._getStartData()
-        predictions = b._predict(data)
-        for i in range(len(predictions)):
-            print("try {}".format(i), data[i], predictions[i])
-    else:
-        b._epochs = 20
-        if b._methodId == 1:
-            b.buildPerceptron()
-            b._startTraining()
-        elif b._methodId == 2:
-            b.buildRnn()
-            b._startTraining()
+def _getSetData(name='', html='', part=0):
+        items = html.find_all(attrs={'name': name})
+        temp1 = []
+        temp2 = []
+        for child in items[part].children:
+            if not isinstance(child, NavigableString):
+                temp1.append(child['value'])
+                temp2.append(child.string)
+        return temp1, temp2
+
+def remakeData():
+    url='https://meteopost.com/weather/archive/'
+    r = requests.get(url)
+    html = bs(r.content, 'html.parser')
+    citySet = {}
+    value, text = _getSetData(name='city', html=html, part=1)
+    for i in range(len(value)):
+        citySet.update({value[i]: text[i]})
+    _f = open('/home/max/Projects/data', 'r')
+    lines = _f.readlines()
+    r = re.compile('^days=[0-9](2)[\n]$')
+    i = 0
+    while True:
+        line = lines[i]
+        nextLine = lines[i+1]
+        temp = str(line[-1:-9:-1])
+        if temp[::-1] not in ('days=28\n', 'days=29\n', 'days=30\n', 'days=31\n'):
+            #print(list(temp[::-1]))
+            lines[i] = lines[i].rstrip() + nextLine
+            lines.pop(i+1)
+        i = i + 1
+        if i + 1 == len(lines):
+            break
+    _f.close()
+    _f = open('/home/max/Projects/data', 'w')
+    _f.writelines(lines)
+    i = 0
+    headers = []
+    AllDataList = []
+    while True:
+        line = lines[i]
+        baseList = line.split('&&')
+        if line[0] == '&':
+            #print(baseList[1])
+            i = i + 1
+            continue
+        dataList = baseList[0].split('_')
+        querryList = baseList[1].split('&')
+        if dataList[0] == '':
+            dataList.pop(0)
+        if line[:3] == '_Де':
+            headers = dataList
+            i = i + 1
+            continue
+        d = dict()
+        for j in range(len(dataList)):
+            if dataList[j] != '=':
+                d.update({headers[j]: dataList[j]})
+            else:
+                d.update({headers[j]: '?'})
+        for item in querryList:
+            temp = item.split('=')
+            d.update({temp[0]: temp[1]})
+        if isinstance(d['Темп. Возд'], str):
+            d['Темп. Возд'] = d['Темп. Возд'][:-1]
+        if isinstance(d['Скор ветра'], str):
+            d['Скор ветра'] = d['Скор ветра'].split(' ')
+            d['Скор ветра'] = d['Скор ветра'][0]
+        if d['День'] == '0':
+            d['День'] = '26'
+        xx = d['Час'].split(':')
+        if int(xx[0]) > 24:
+            d['Час'] = '12:00'
+        AllDataList.append(d)
+        i = i + 1
+            #11-3
+            #4-10
+        if i == len(lines):
+            break
+    #self._curs.execute("INSERT INTO public.meteodata VALUES(DEFAULT, '" + str(d['y']) + "-" + str(d['m']) + "-" + str(d['День']) + " " + str(d['Час']) + ":00', " + str(d['city']) + ", '" + citySet[d['city']] + "', " + str(d['Темп. Возд']) + ", " + str(d['Ветер']) + ", " + str(d['Скор ветра']) + ", " + str(d['Давл станц']) + ", " + str(d['Давл моря']) + ", '{" + str(d['Явления погоды']) + "}')")
+    #self._conn.commit()
+    _f.close()
+    checkData(AllDataList, citySet)
+
+def checkData(data, citySet):
+    _conn = psycopg2.connect(dbname='Weather', user='postgres', password='12345', host='localhost')
+    _curs = _conn.cursor()
+    #ErrorList = ['?', '']
+    ErrorList = []
+    ErrorList2 = []
+    last = -1
+    lastSpeed = -1
+    lastTemp = -100
+    fixList = []
+    fixList2 = []
+    for i in range(len(data)):
+        d = data[i]
+        if isinstance(last, int) or d['День'] != last['День']:
+            if lastSpeed == -1:
+                for v in fixList:
+                    ErrorList.append(v)
+            if lastTemp == -100:
+                for v in fixList2:
+                    ErrorList2.append(v)
+            last = d
+            lastSpeed = -1
+            lastTemp = -100
+            fixList = []
+            fixList2 = []
+        if d['Давл станц'] == '?':
+            d['Давл станц'] = 760
+        if d['Давл моря'] == '?' or d['Давл моря'] == '410':
+            d['Давл моря'] = 760
+        if d['Явления погоды'] == '?' or d['Явления погоды'] == '':
+            d['Явления погоды'] = 'Нет'
+        if d['Скор ветра'] == '?' and lastSpeed != -1:
+            d['Скор ветра'] = lastSpeed
+        elif lastSpeed != -1:
+            lastSpeed = d['Скор ветра']
+            if len(fixList) != 0:
+                for v in fixList:
+                    data[v]['Скор ветра'] = lastSpeed
         else:
-            b.buildAutoencoder()
-            b._startTraining()
+            fixList.append(i)
+        if d['Темп. Возд'] in ['?', '', None] and lastTemp != -100:
+            d['Темп. Возд'] = lastTemp
+            d['Темп. Возд'] = float(d['Темп. Возд'])
+        elif lastTemp != -100:
+            lastTemp = float(d['Темп. Возд'])
+            if len(fixList2) != 0:
+                for v in fixList2:
+                    data[v]['Темп. Возд'] = lastTemp
+        else:
+            fixList2.append(i)
+    tmp = {}
+    for d in data:
+        if d['m'] not in list(tmp.keys()):
+            tmp.update({d['m']: [-100, ]})
+        elif d['Темп. Возд'] not in ['?', '', None]:
+            tmp[d['m']].append(float(d['Темп. Возд']))
+    tmp2 = {}
+    for key in list(tmp.keys()):
+        tmp[key] = tmp[key][1:]
+        print(tmp[key])
+        tmp2.update({key: np.mean(tmp[key])})
+    for i in ErrorList:
+        data[i]['Скор ветра'] = 0
+        data[i]['Темп. Возд'] = tmp2[data[i]['m']]
+    for d in data:
+        s = "INSERT INTO public.meteodata_meteodata VALUES(DEFAULT, '" + str(d['y']) + "-" + str(d['m']) + "-" + str(d['День']) + " " + str(d['Час']) + ":00', " + str(d['city']) + ", '" + citySet[d['city']] + "', " + str(d['Ветер']) + ", " + str(d['Скор ветра']) + ", " + str(d['Давл станц']) + ", " + str(d['Давл моря']) + ", '{" + str(d['Явления погоды']) + "}'," + str(d['Темп. Возд']) + ")"
+        print(s)
+        _curs.execute(s)
+        _conn.commit()
+    _curs.close()
+    _conn.close()
+    '''
+    flag = True
+    for d in data[1000:]:
+        if d['d'] == '1' and d['m'] == '04' and d['y'] == '2011' and d['city'] == '33614' and d['arc'] == '2' and d['days'] == '30\n':
+            flag = False
+        if flag: 
+            continue
+        if d['y'] in ErrorList:
+            continue
+        if d['m'] in ErrorList:
+            continue
+        if d['День'] in ErrorList:
+            continue
+        if d['Час'] in ErrorList:
+            continue
+        if d['city'] in ErrorList:
+            continue
+        if d['Темп. Возд'] in ErrorList:
+            continue
+        if d['Ветер'] in ErrorList:
+            continue
+        if d['Явления погоды'] in ErrorList:
+            continue
+        if d['Давл станц']in ErrorList:
+            continue
+        if d['Давл моря'] in ErrorList:
+            continue
+        if d['Скор ветра'] in ErrorList:
+            continue
+        s = "INSERT INTO public.meteodata_clearmeteodata VALUES(DEFAULT, '" + str(d['y']) + "-" + str(d['m']) + "-" + str(d['День']) + " " + str(d['Час']) + ":00', " + str(d['city']) + ", '" + citySet[d['city']] + "', " + str(d['Темп. Возд']) + ", " + str(d['Ветер']) + ", " + str(d['Скор ветра']) + ", " + str(d['Давл станц']) + ", " + str(d['Давл моря']) + ", '{" + str(d['Явления погоды']) + "}')"
+        _curs.execute(s)
+        _conn.commit()
+    _curs.close()
+    _conn.close()
+    last = -1
+    lastSpeed = -1
+    fixList = []
+    for i in range(len(data)):
+        d = data[i]
+        if isinstance(last, int) or d['День'] != last['День']:
+            if lastSpeed == -1:
+                for v in fixList:
+                    ErrorList.append(v)
+            last = d
+            lastSpeed = -1
+            fixList = []
+        if d['Давл станц'] == '?':
+            d['Давл станц'] = 760
+        if d['Давл моря'] == '?' or d['Давл моря'] == '410':
+            d['Давл моря'] = 760
+        if d['Скор ветра'] == '?':
+            d['Скор ветра'] = lastSpeed
+        elif lastSpeed != -1:
+            lastSpeed = d['Скор ветра']
+            if len(fixList) != 0:
+                for v in fixList:
+                    data[v]['Скор ветра'] = lastSpeed
+        else:
+            fixList.append(i)
+    print("!kek!", data[0].keys())
+    print(ErrorList)
+    '''
+
+if __name__ == "__main__":
+    neural = False
+    if neural:
+        b = Base()
+        b._methodId = 0
+        test = False
+        if test:
+            b._importNet()
+            data = b._getStartData()
+            predictions = b._predict(data)
+            for i in range(len(predictions)):
+                print("try {}".format(i), data[i], predictions[i])
+        else:
+            b._epochs = 20
+            if b._methodId == 1:
+                b.buildPerceptron()
+                b._startTraining()
+            elif b._methodId == 2:
+                b.buildRnn()
+                b._startTraining()
+            else:
+                b.buildAutoencoder()
+                b._startTraining()
+    else:
+        remakeData()
         
 

@@ -13,21 +13,12 @@ class MyParser:
     def __init__(self):
         self._rawData = []
         self._urls = ['https://meteopost.com/weather/archive/']
-        #self._curs = self._conn.cursor()
-        #self._f = 0
 
     def StartParse(self):
         citySet, data = self.raw_update1()
-        '''if not isinstance(p._f, int):
-            p._f.close()'''
         return self.prepare_data1(citySet, data)
 
     def raw_update1(self, url='https://meteopost.com/weather/archive/', startParseRequest='', endParseRequest=''):
-        '''try:
-            self._f.close()
-        except:
-            self._f = 0
-        self._f = open('/home/max/Projects/BACH_Thesis/data.txt', 'a+')'''
         resultList = []
         monthSet = {'value': 0, 'text': 0}
         yearSet = {'value': 0, 'text': 0}
@@ -120,11 +111,7 @@ class MyParser:
                                             s = s + '_=' # if data missing = symbol is placeholder
                         print('SSS - ', s)
                         resultList.append(s + '&&' + req + '\n')
-                        '''self._f.write(s)
-                        self._f.write('&&' + req)
-                        self._f.write('\n')'''
                     r.close()
-        # self._f.close()
         return citySet, resultList
 
     def _getSetData(self, name='', html='', part=0):
@@ -139,8 +126,6 @@ class MyParser:
 
     def prepare_data1(self, citySet, data):
         resultList = []
-        '''self._f = open('/home/max/Projects/BACH_Thesis/data', 'r')
-        data = self._f.readlines()'''
         r = re.compile('^days=[0-9](2)[\n]$')
         i = 0
         while True:
@@ -154,9 +139,6 @@ class MyParser:
             i = i + 1
             if i + 1 == len(data):
                 break
-        '''self._f.close()
-        self._f = open('/home/max/Projects/BACH_Thesis/data', 'w')
-        self._f.writelines(data)'''
         i = 0
         headers = []
         while True:
@@ -199,8 +181,10 @@ class MyParser:
                 #4-10
             if i == len(data):
                 break
-        # self._f.close()
         return citySet, resultList   
+
 
 if __name__ == "__main__":
     pass
+    
+        
