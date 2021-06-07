@@ -34,6 +34,11 @@ class MainMenu:
                 "clear_forecast_page": MainMenu.Reader._clear_forecast_page,
                 "clear_forecast_search": MainMenu.Reader._clear_forecast_search,
                 "clear_forecast_max_pages": MainMenu.get_max_pages(4),
+                "all_records_count": MainMenu.Deamon.getLastRecordsCount(),
+                "clear_records_count": MainMenu.Deamon.getLastClearRecordsCount(),
+                "anomalies_count": MainMenu.Deamon.getLastAnomaliesCount(),
+                "all_result_persentage": MainMenu.Deamon.getLastResultAccuracy(),
+                "clear_result_persentage": MainMenu.Deamon.getLastClearResultAccuracy()
             }
         elif MainMenu.currentContext == 3:
             context = {
@@ -64,19 +69,20 @@ class MainMenu:
 
     def data_update():
         print('data_update')
-        #MainMenu.Miner.updateMeteodata()
+        citySet, listt = MainMenu.Miner.updateMeteodata()
+        MainMenu.Miner.save()
         
     def forecast_update():
         print('forecast_update')
-        #MainMenu.Deamon.update()
+        MainMenu.Deamon.update()
 
     def make_forecast_test():
         print('make_forecast_test')
-        #MainMenu.Deamon._make_test()
+        MainMenu.Deamon.makeTest()
 
     def anomaly_update():
         print('anomaly_update')
-        #MainMenu.Deamon.scanForAnomalies()
+        MainMenu.Deamon.scanForAnomalies()
 
     def get_menu_status():
         print('get_menu_status')

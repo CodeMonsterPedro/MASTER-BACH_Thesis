@@ -14,11 +14,11 @@ class MyParser:
         self._rawData = []
         self._urls = ['https://meteopost.com/weather/archive/']
 
-    def StartParse(self):
-        citySet, data = self.raw_update1()
+    def StartParse(self, start):
+        citySet, data = self.raw_update1(start)
         return self.prepare_data1(citySet, data)
 
-    def raw_update1(self, url='https://meteopost.com/weather/archive/', startParseRequest='', endParseRequest=''):
+    def raw_update1(self, url='https://meteopost.com/weather/archive/', start='', endParseRequest=''):
         resultList = []
         monthSet = {'value': 0, 'text': 0}
         yearSet = {'value': 0, 'text': 0}
