@@ -10,12 +10,13 @@ class MeteodataMiner:
         self._parser = MyParser()
         self._data = []
         self._citySet = []
+        self._rowsCount = 0
 
     def meteodataUpdateStatus(self):
         return False
 
     def get(self):
-        return (self._citySet, self._data)
+        return (self._citySet, self._data, self._rowsCount)
 
     def getLastDate(self):
         tmp = self._db.getMeteodata(filter='DISTINCT datetime', where='ORDER BY datetime DESC')
@@ -26,17 +27,22 @@ class MeteodataMiner:
         print('meteodataminder update')
         startDate = self.getLastDate()
         lists = []
-        citySet, listt = self._parser.StartParse(start = startDate + timedelta(days=1))
+        citySet, listt, rowsCount = self._parser.StartParse(start = startDate + timedelta(days=1))
         lists.append(listt)
-        data = self._join(lists)
-        print(data[:100])
+        data = []
+        if rowsCount > 1:
+            data = self._join(lists, 2)
+        else:
+            data = self._join(lists, 1)
+        print(data)
         self._data = data
         self._citySet = citySet
+        self._rowsCount = rowsCount
         
-    def _join(self, lists=[]):
+    def _join(self, lists=[], ttype=2):
         print('meteodataminder join')
         resultList = []
-        if len(lists) <= 1:
+        if ttype == 1:
             return lists
         else:
             for l in lists:

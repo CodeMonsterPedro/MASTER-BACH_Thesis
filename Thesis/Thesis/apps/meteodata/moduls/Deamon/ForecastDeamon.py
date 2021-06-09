@@ -4,6 +4,7 @@ from .AnomalyModel import AnomalyModel
 from ..MeteodataMiner import MeteodataMiner
 from datetime import datetime
 import matplotlib.pyplot as plt
+from ..DB import DBControl
 
 
 class ForecastDeamon:
@@ -26,24 +27,24 @@ class ForecastDeamon:
 
     def _prepareMeteodataForTest(self):
         self._miner.updateMeteodata()
-        citySet, lists = self._miner.get()
-        clearList = self._anomaly.filter(lists)
+        citySet, lists, count = self._miner.get()
+        clearList = self._anomaly.filter(lists, count)
         self._anomaly.save()
         for row in lists:
             self._db.insertMeteodata(row)
         for row in clearList:
             self._db.insertClearMeteodata(row)
-        return (lists, clearList)
+        return (lists, clearList, count)
 
-    def _prepareModelsForTest(self, rowList, clearList):
+    def _prepareModelsForTest(self, rowList, clearList, count):
         #self._simple.trainModel(rowList)
         #self._simpleClear.trainModel(clearList)
         #self._summary.trainModel(rowList)
         #self._summaryClear.trainModel(clearList)
-        predictions = self._simple.predict(rowList)
-        predictionsClear = self._simpleClear.predict(clearList)
-        predictions_summery = self._summary.predict(predictions)
-        predictionsClear_summery = self._summaryClear.predict(predictionsClear)
+        predictions = self._simple.predict(rowList, count)
+        predictionsClear = self._simpleClear.predict(clearList, count)
+        predictions_summery = self._summary.predict(predictions, count)
+        predictionsClear_summery = self._summaryClear.predict(predictionsClear, count)
 
         resultPrediction = []
         resultPredictionClear = []
@@ -83,14 +84,20 @@ class ForecastDeamon:
 
     def makeTest(self):
         print('good test')
-        rowList, clearList = self._prepareMeteodataForTest()
+        rowList, clearList, count = self._prepareMeteodataForTest()
         self._lastRecordsCount = len(rowList)
         self._lastClearRecordsCount = len(clearList)
         self._lastAnomaliesCount = self._anomaly.getStatistic()
-        resultList, resultListClear = self._prepareModelsForTest(rowList, clearList)
+        resultList, resultListClear = self._prepareModelsForTest(rowList, clearList, count)
         self._lastRecordsAccuracy = self._simple.getStatistic()
         self._lastClearRecordsAccuracy = self._simpleClear.getStatistic()
-        #TODO plot creation
+        clearDataPercent = len(resultListClear) * (len(resultList)/100)
+        sizes = [clearDataPercent, abs(clearDataPercent - 100)]
+        fig1, ax1 = plt.subplots(1, 2)
+        ax1[0].bar(['All', 'Anomalies'], [len(resultList), len(resultListClear)])
+        ax1[1].pie(sizes, labels=['All', 'Anomalies'], autopct='%1.1f%%', shadow=True, startangle=90)
+        ax1[1].axis('equal')
+        plt.savefig('meteodata/static/saved_figure.png')
 
     def update(self):
         self._updateShort()

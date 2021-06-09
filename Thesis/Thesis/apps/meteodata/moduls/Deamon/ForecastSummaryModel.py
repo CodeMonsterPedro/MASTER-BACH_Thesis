@@ -6,6 +6,7 @@ from datetime import datetime, date, time
 from sklearn import metrics
 from sklearn.model_selection import train_test_split 
 import numpy as np
+import subprocess
 
 
 class ForecastSummaryModel:
@@ -167,6 +168,7 @@ class ForecastSummaryModel:
             "зарница": "Зарница",
             "Зарница": "Зарница",
         }
+        self._correctWeatherDict = {}
         self._method = []
         self._modelName = modelName
         self._dataSet = 0
@@ -174,9 +176,17 @@ class ForecastSummaryModel:
         self._epochs = 20
         self._methodId = 2
         self._importNet()
+        tempWeatherList = []
+        for item in self._weatherList.values():
+            if item not in tempWeatherList:
+                tempWeatherList.append(item)
+        i = 1.0
+        for item in tempWeatherList:
+            self._correctWeatherDict.update({item: i})
+            i = i + 1.0
 
     def _getDataSet(self):
-        data = self._db.getMeteodata(what='datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure', where='ORDER BY datetime')
+        data = self._db.getMeteodata(what='datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather', where='ORDER BY datetime')
         return data
 
     def _makeAccurancyTest(self, values, labels):
@@ -194,24 +204,37 @@ class ForecastSummaryModel:
             obj.save('Thesis/Thesis/models/' + n + t + ttype + ".h5")
 
     def _importNet(self):
-        self._method = keras.models.load_model('../../../../models/{}.h5'.format(self._modelName))
+        self._method = keras.models.load_model('Thesis/Thesis/models/{}.h5'.format(self._modelName))
 
-    def _convertToNormal(self, row, data):
-        valtmp = []
-        valtmp.append(row[0])
-        valtmp.append(row[1])
-        valtmp.append(row[2])
-        valtmp.append(float(data[3] * 10000) - 100) # 3 - temperature -
-        valtmp.append(float(data[4]) * 10) # 4 - wind_way
-        valtmp.append(float(data[5]) * 10000) # 5 - wind_speed -
-        valtmp.append(float(data[6]) * 10000) # 6 - air_pressure
-        valtmp.append(float(data[7]) * 10000) # 7 - water_pressure
-        print(valtmp)
-        return valtmp
+    def _convertToNormal(self, data, ttype=2):
+        val = self._correctWeatherDict.values()
+        keys = self._correctWeatherDict.keys()
+        if ttype == 1:
+            for i in range(len(val)):
+                if data == val[i]:
+                    return keys[i]
+        else:
+            resultList = []
+            for row in data:
+                for i in range(len(val)):
+                    if row == val[i]:
+                        resultList.append(keys[i])
+            return resultList
 
-    def _prepareData(self, data):
+    def _prepareData(self, data, ttype=2):
         valtmp = []
-        if len(data) == 1:
+        if ttype == 1:
+            values = data
+            labels = []
+            weather = values[-1]
+            labels.append(weather)
+            values.pop(len(values) - 1)
+            if labels.isdigit():
+                labels = "Нет"
+            else:
+                labels = self._weatherList[labels]
+            labels = (self._correctWeatherDict[labels])
+            valtmp = []
             datetimeData = datetime.strptime(values[0][:-6], "%Y-%m-%d %H:%M:%S")
             d = datetimeData
             valtmp.append(d.year)
@@ -264,7 +287,7 @@ class ForecastSummaryModel:
 
     def update(self):
         rawData = self._getDataSet()
-        self._dataSet = self._prepareData(rawData)
+        self._dataSet = self._prepareData(rawData, 2)
         resultList = []
         swhat = "DISTINCT place"
         cities = self._db.getMeteodata(s)
@@ -274,21 +297,21 @@ class ForecastSummaryModel:
             place = tmp[0][1]
             placeName = tmp[0][2]
             for i in ramge((7*24) / 3):
-                data = self._predict(tmp[-1])
+                data = self.predict(tmp[-1])
                 tmp.append(data)
                 self._db.insertForecast([startDate + timedelta(hours=3), place, placeName, data[0], data[1], data[2], data[3], data[4], ])
         self._db.save()
 
-    def predict(self, data):
+    def predict(self, data, ttype=2):
         l = []
-        if len(data) == 1:
-            tmp = self._prepareData(data)
+        if ttype == 1:
+            tmp = self._prepareData(data, 1)
             l = self._method.predict(tmp)
         else:
             for row in data:
-                tmp = self._prepareData(row)
+                tmp = self._prepareData(row,1)
                 l.append(self._method.predict(tmp))
-        return self._convertToNormal(row, l)
+        return self._convertToNormal(l, ttype)
 
     def trainModel(self, data):
         _values = data
@@ -326,3 +349,6 @@ class ForecastSummaryModel:
 
     def getStatistic(self):
         return self._accurancy
+
+if __name__ == "__main__":
+    s = subprocess.call('pwd')

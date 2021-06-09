@@ -39,9 +39,9 @@ class SimpleForecastModel:
             obj.save('Thesis/Thesis/models/' + n + t + ttype + ".h5")
 
     def _importNet(self):
-        self._method = keras.models.load_model('../../../../models/{}.h5'.format(self._modelName))
+        self._method = keras.models.load_model('Thesis/Thesis/models/{}.h5'.format(self._modelName))
 
-    def _convertToNormal(self, row, data):
+    def _convertToNormal(self, row, data, ttype=2):
         valtmp = []
         valtmp.append(row[0])
         valtmp.append(row[1])
@@ -54,9 +54,9 @@ class SimpleForecastModel:
         print(valtmp)
         return valtmp
 
-    def _prepareData(self, data):
+    def _prepareData(self, data, ttype=2):
         valtmp = []
-        if len(data) == 1:
+        if ttype == 1:
             datetimeData = datetime.strptime(data[0][:-6], "%Y-%m-%d %H:%M:%S")# 0 - datetime, 1 - place, 2 - placeName, 3 - temperature, 4 - wind_way, 5 - wind_speed, 6 - air_pressure, 7 - water_pressure, 8 - weather
             d = datetimeData
             valtmp.append(float(d.year) / 10000)
@@ -91,7 +91,7 @@ class SimpleForecastModel:
 
     def update(self):
         rawData = self._getDataSet()
-        self._dataSet = self._prepareData(rawData)
+        self._dataSet = self._prepareData(rawData, 2)
         resultList = []
         swhat = "DISTINCT place"
         cities = self._db.getMeteodata(s)
@@ -101,21 +101,21 @@ class SimpleForecastModel:
             place = tmp[0][1]
             placeName = tmp[0][2]
             for i in ramge((7*24) / 3):
-                data = self._predict(tmp[-1])
+                data = self.predict(tmp[-1])
                 tmp.append(data)
                 self._db.insertForecast([startDate + timedelta(hours=3), place, placeName, data[0], data[1], data[2], data[3], data[4], ])
         self._db.save()
 
-    def predict(self, data):
+    def predict(self, data, ttype=2):
         l = []
-        if len(data) == 1:
-            tmp = self._prepareData(data)
+        if ttype == 1:
+            tmp = self._prepareData(data, 1)
             l = self._method.predict(tmp)
         else:
             for row in data:
-                tmp = self._prepareData(row)
+                tmp = self._prepareData(row, 1)
                 l.append(self._method.predict(tmp))
-        return self._convertToNormal(row, l)
+        return self._convertToNormal(row, l, ttype)
 
     def trainModel(self, data):
         _values = data
