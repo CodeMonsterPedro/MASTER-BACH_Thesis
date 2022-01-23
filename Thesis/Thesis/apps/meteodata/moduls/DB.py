@@ -5,7 +5,7 @@ from datetime import date, datetime
 class DBControl():
     def __init__(self):
         self._connect()
-        self._tables = ('meteodata', 'forecastmeteodata', 'clearmeteodata', 'clearforecastmeteodata', 'meteodataanomalies')
+        self._tables = ('meteodata_meteodata', 'meteodata_forecastmeteodata', 'meteodata_clearmeteodata', 'meteodata_clearforecastmeteodata', 'meteodata_meteodataanomalies')
         self._curTable = 0
         self._lastQuere = ''
 
@@ -30,19 +30,19 @@ class DBControl():
 
     def insertMeteodata(self, data):
         _id = int(self.getMaxId(self._tables[2]) + 1)
-        self._curs.execute("INSERT INTO public.meteodata_meteodata VALUES(DEFAULT, '" + data[0] + "', " + data[1] + ", '" + data[2] + "', " + data[3] + ", " + data[4] + ", " + data[5] + ", " + data[6] + ", " + data[7] + ", '{" + data[8] + "}')")
+        self._curs.execute("INSERT INTO public.meteodata_meteodata VALUES(DEFAULT, '" + str(data[0]) + "', " + str(data[1]) + ", '" + str(data[2]) + "'," + str(data[3]) + ", " + str(data[4]) + ", " + str(data[5]) + ", " + str(data[6]) + ", " + str(data[7]) + ", '{" + str(data[8]) + "}')")
 
     def insertForecast(self, data):
         _id = int(self.getMaxId(self._tables[3]) + 1)
-        self._curs.execute("INSERT INTO public.meteodata_forecastmeteodata VALUES(DEFAULT, '" + data[0] + "', " + data[1] + ", '" + data[2] + "', " + data[3] + ", " + data[4] + ", " + data[5] + ", " + data[6] + ", " + data[7] + ", '{" + data[8] + "}')")
+        self._curs.execute("INSERT INTO public.meteodata_forecastmeteodata VALUES(DEFAULT, '" + str(data[0]) + "', " + str(data[1]) + ", '" + str(data[2]) + "', " + str(data[3]) + ", " + str(data[4]) + ", " + str(data[5]) + ", " + str(data[6]) + ", " + str(data[7]) + ", '{" + str(data[8]) + "}')")
 
     def insertClearMeteodata(self, data):
         _id = int(self.getMaxId(self._tables[2]) + 1)
-        self._curs.execute("INSERT INTO public.meteodata_clearmeteodata VALUES(DEFAULT, '" + data[0] + "', " + data[1] + ", '" + data[2] + "', " + data[3] + ", " + data[4] + ", " + data[5] + ", " + data[6] + ", " + data[7] + ", '{" + data[8] + "}')")
+        self._curs.execute("INSERT INTO public.meteodata_clearmeteodata VALUES(DEFAULT, '" + str(data[0]) + "', " + str(data[1]) + ", '" + str(data[2]) + "', " + str(data[3]) + ", " + str(data[4]) + ", " + str(data[5]) + ", " + str(data[6]) + ", " + str(data[7]) + ", '{" + str(data[8]) + "}')")
 
     def insertClearForecast(self, data):
         _id = int(self.getMaxId(self._tables[3]) + 1)
-        self._curs.execute("INSERT INTO public.meteodata_clearforecastmeteodata VALUES(DEFAULT, '" + data[0] + "', " + data[1] + ", '" + data[2] + "', " + data[3] + ", " + data[4] + ", " + data[5] + ", " + data[6] + ", " + data[7] + ", '{" + data[8] + "}')")    
+        self._curs.execute("INSERT INTO public.meteodata_clearforecastmeteodata VALUES(DEFAULT, '" + str(data[0]) + "', " + str(data[1]) + ", '" + str(data[2]) + "', " + str(data[3]) + ", " + str(data[4]) + ", " + str(data[5]) + ", " + str(data[6]) + ", " + str(data[7]) + ", '{" + str(data[8]) + "}')")    
     
     def insertAnomalies(self, data):
         _id = int(self.getMaxId(self._tables[0]) + 1)

@@ -28,10 +28,7 @@
         <input type="text" placeholder="Введите данные для поиска..." class="inputfield" name="search" value={{ forecast_search }}>
         <button class="buttonAdditional" type="submit">Показать</button>
     </form></br>
-    <form action="{% url 'forecast-update-test-result' %}" method="post">
-        {% csrf_token %}
-        <button class="buttonAdditional" type="submit">Провести тест</button>
-    </form></br></br>
+</br></br>
 
 
     <table class="main-table">

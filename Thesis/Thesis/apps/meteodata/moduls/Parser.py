@@ -5,7 +5,7 @@ from calendar import monthrange
 import psycopg2
 import time
 import re
-from datetime import date
+from datetime import date, datetime
 
 
 class MyParser:
@@ -16,9 +16,10 @@ class MyParser:
 
     def StartParse(self, start):
         citySet, data = self.raw_update1(start)
+        print(len(data))
         return self.prepare_data1(citySet, data)
 
-    def raw_update1(self, url='https://meteopost.com/weather/archive/', start='', endParseRequest=''):
+    def raw_update1(self, start, url='https://meteopost.com/weather/archive/', endParseRequest=''):
         resultList = []
         monthSet = {'value': 0, 'text': 0}
         yearSet = {'value': 0, 'text': 0}
@@ -34,6 +35,7 @@ class MyParser:
         monthSet['value'], monthSet['text'] = self._getSetData(name='m', html=html, part=0)
         r.close()
         startParseFlag = False
+        ttoday = datetime.today()
         for year in yearSet['value']:
             y = year
             for month in monthSet['value']:
@@ -42,7 +44,6 @@ class MyParser:
                 for city in citySet['value']:
                     city = city
                     req = 'd=1&m={}&y={}&city={}&arc=2&days={}'.format(m, y, city, days)
-                    print(req)
                     hd = {
                         "Host": "meteopost.com",
                         "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0",
@@ -59,13 +60,16 @@ class MyParser:
                         "Upgrade-Insecure-Requests": "1",
                         "TE": "Trailers"
                     }
-                    if req == startParseRequest or startParseRequest == '':
+                    if int(m) == start.month and int(y) == start.year and city == citySet['value'][0]:
                         startParseFlag = True
+                    if int(m) >= ttoday.month and int(y) >= ttoday.year:
+                        r.close()
+                        return citySet, resultList
                     if not startParseFlag:
                         continue
                     if req == endParseRequest:
-                        return
-                    time.sleep(0.15) # not to ddos timer)
+                        return citySet, resultList
+                    time.sleep(0.1) # not to ddos timer)
                     r = requests.post(url, data=req.encode(), headers=hd, stream=True)
                     html = bs(r.content, 'html5lib')
                     items = html.find_all("table")
@@ -125,6 +129,7 @@ class MyParser:
         return temp1, temp2
 
     def prepare_data1(self, citySet, data):
+        print(citySet)
         resultList = []
         r = re.compile('^days=[0-9](2)[\n]$')
         i = 0
@@ -181,7 +186,22 @@ class MyParser:
                 #4-10
             if i == len(data):
                 break
-        return citySet, resultList   
+        correctResultList = []
+        for d in resultList:
+            tmp = []
+            tempTime = str(d['Час']).split(':')
+            tempDate = datetime(year=int(d['y']), month=int(d['m']), day=int(d['День']), hour=int(tempTime[0]))
+            tmp.append(tempDate)
+            tmp.append(d['city'])
+            tmp.append(citySet['text'][citySet['value'].index(d['city'])])
+            tmp.append(str(d['Темп. Возд']))
+            tmp.append(str(d['Ветер']))
+            tmp.append(str(d['Скор ветра']))
+            tmp.append(str(d['Давл станц']))
+            tmp.append(str(d['Давл моря']))
+            tmp.append(str(d['Явления погоды']))
+            correctResultList.append(tmp)
+        return citySet, correctResultList, len(correctResultList)
 
 
 if __name__ == "__main__":

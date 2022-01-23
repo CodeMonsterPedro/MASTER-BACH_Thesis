@@ -307,7 +307,7 @@ class Base:
         self._loss = 'mean_squared_error'
         self._method = keras.Sequential()
         self._method.add(keras.layers.Embedding(input_dim=len(self._values[0]), output_dim=len(self._labels[0])))
-        self._method.add(keras.layers.LSTM(128))
+        self._method.add(keras.layers.LSTM(100))
         self._method.add(keras.layers.Dense(len(self._labels[0]), activation='softmax'))
         self._method.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metric)
         self._method.summary()
@@ -788,10 +788,10 @@ def checkData(data, citySet):
     '''
 
 if __name__ == "__main__":
-    neural = False
+    neural = True
     if neural:
         b = Base()
-        b._methodId = 0
+        b._methodId = 2
         test = False
         if test:
             b._importNet()
