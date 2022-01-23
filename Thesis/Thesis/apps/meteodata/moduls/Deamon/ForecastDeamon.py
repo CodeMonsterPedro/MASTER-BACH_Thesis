@@ -10,11 +10,11 @@ from ..DB import DBControl
 class ForecastDeamon:
 
     def __init__(self):
-        self._summary = ForecastSummaryModel('fullconnect')
-        self._summaryClear = ForecastSummaryModel('fullconnect_clear')
-        self._simple = SimpleForecastModel('rnn')
-        self._simpleClear = SimpleForecastModel('rnn_clear')
-        self._anomaly = AnomalyModel()
+        #self._summary = ForecastSummaryModel('fullconnect', 'meteodata_forecastmeteodata')
+        #self._summaryClear = ForecastSummaryModel('fullconnect_clear', 'meteodata_clearforecastmeteodata')
+        #self._simple = SimpleForecastModel('rnn', 'meteodata_meteodata')
+        #self._simpleClear = SimpleForecastModel('rnn_clear', 'meteodata_clearmeteodata')
+        #self._anomaly = AnomalyModel()
         self._miner = MeteodataMiner()
         self._db = DBControl()
         self._cacheFile = 0
@@ -37,15 +37,10 @@ class ForecastDeamon:
         return (lists, clearList, count)
 
     def _prepareModelsForTest(self, rowList, clearList, count):
-        #self._simple.trainModel(rowList)
-        #self._simpleClear.trainModel(clearList)
-        #self._summary.trainModel(rowList)
-        #self._summaryClear.trainModel(clearList)
         predictions = self._simple.predict(rowList, count)
         predictionsClear = self._simpleClear.predict(clearList, count)
         predictions_summery = self._summary.predict(predictions, count)
         predictionsClear_summery = self._summaryClear.predict(predictionsClear, count)
-
         resultPrediction = []
         resultPredictionClear = []
         for i in range(len(predictions)):
@@ -91,13 +86,13 @@ class ForecastDeamon:
         resultList, resultListClear = self._prepareModelsForTest(rowList, clearList, count)
         self._lastRecordsAccuracy = self._simple.getStatistic()
         self._lastClearRecordsAccuracy = self._simpleClear.getStatistic()
-        clearDataPercent = len(resultListClear) * (len(resultList)/100)
+        clearDataPercent = len(resultListClear) / (len(resultList)/100)
         sizes = [clearDataPercent, abs(clearDataPercent - 100)]
         fig1, ax1 = plt.subplots(1, 2)
-        ax1[0].bar(['All', 'Anomalies'], [len(resultList), len(resultListClear)])
+        ax1[0].bar(['All', 'Anomalies'], [len(resultList), len(resultList) - len(resultListClear)])
         ax1[1].pie(sizes, labels=['All', 'Anomalies'], autopct='%1.1f%%', shadow=True, startangle=90)
         ax1[1].axis('equal')
-        plt.savefig('meteodata/static/saved_figure.png')
+        plt.savefig('Thesis/Thesis/apps/meteodata/static/saved_figure.png')
 
     def update(self):
         self._updateShort()
@@ -108,7 +103,7 @@ class ForecastDeamon:
         self._anomaly.scan()
         self._makeLog('anomalies')
 
-    def getLagetLastRecordsCount(self):
+    def getLastRecordsCount(self):
         return self._lastRecordsCount
     
     def getLastClearRecordsCount(self):

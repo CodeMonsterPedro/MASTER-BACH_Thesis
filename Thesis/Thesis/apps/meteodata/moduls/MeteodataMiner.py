@@ -20,20 +20,17 @@ class MeteodataMiner:
 
     def getLastDate(self):
         tmp = self._db.getMeteodata(filter='DISTINCT datetime', where='ORDER BY datetime DESC')
-        print(tmp)
+        #print(tmp)
         return tmp[0]
 
     def updateMeteodata(self):
         print('meteodataminder update')
         startDate = self.getLastDate()
+        startDate = datetime.strptime(startDate[0][:-6], "%Y-%m-%d %H:%M:%S")
         lists = []
-        citySet, listt, rowsCount = self._parser.StartParse(start = startDate + timedelta(days=1))
+        citySet, listt, rowsCount = self._parser.StartParse(start=(startDate + timedelta(days=1)))
         lists.append(listt)
-        data = []
-        if rowsCount > 1:
-            data = self._join(lists, 2)
-        else:
-            data = self._join(lists, 1)
+        data = listt
         print(data)
         self._data = data
         self._citySet = citySet
@@ -59,10 +56,10 @@ class MeteodataMiner:
     def save(self):
         print('meteodataminer save')
         for row in self._data:
-            d = datetime(year=row['y'], month=row['m'], day=row['День'], hour=row['Час'])
-            self._db.insertMeteodata([d, row['city'], self._citySet[row['city']], row['Темп. Возд'], row['Ветер'], row['Скор ветра'], row['Давл станц'], row['Давл моря'], row['Явления погоды']])
+            self._db.insertMeteodata(row)
         self._db.save()
         self._data = []
         self._citySet = []
+        self._rowsCount = 0
 
     

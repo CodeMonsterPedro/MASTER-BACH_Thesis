@@ -77,7 +77,11 @@ class MeteodataUpdateDataPage(View):
         print(d)
         MainMenu.set_context(1)
         MainMenu.data_update()
-        return redirect('/meteodata/')
+        try:
+            context = MainMenu.get_context()
+            return render(request, "meteodata/meteodataview.html", context=context)
+        except:
+            return redirect('/meteodata/')
 
 
 class ForecastView(ListView):
@@ -123,7 +127,7 @@ class ForecastSortPage(View):
     def post(self, request):
         d = request.POST
         print(d)
-        MainMenu.sort(3, int(d['data_name'][0]))
+        MainMenu.sort(3, int(d['field_name'][0]))
         try:
             context = MainMenu.get_context()
             return render(request, "meteodata/forecastview.html", context=context)
@@ -158,6 +162,14 @@ class ForecastUpdateTestResultPage(View):
 
     def post(self, request):
         d = request.POST
+        print(d)
+        MainMenu.set_context(2)
+        MainMenu.make_forecast_test()
+        context = MainMenu.get_context()
+        return render(request, "meteodata/testresultview.html", context=context)
+
+    def get(self, request):
+        d = request.GET
         print(d)
         MainMenu.set_context(2)
         MainMenu.make_forecast_test()

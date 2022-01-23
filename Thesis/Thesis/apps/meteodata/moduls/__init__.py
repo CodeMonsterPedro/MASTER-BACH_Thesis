@@ -1,7 +1,7 @@
 from .Deamon.ForecastDeamon import ForecastDeamon
 from .MeteodataMiner import MeteodataMiner
 from .DataReader import DataReader
-
+import time as ttime
 
 class MainMenu:
 
@@ -69,7 +69,7 @@ class MainMenu:
 
     def data_update():
         print('data_update')
-        citySet, listt = MainMenu.Miner.updateMeteodata()
+        MainMenu.Miner.updateMeteodata()
         MainMenu.Miner.save()
         
     def forecast_update():
