@@ -1,6 +1,7 @@
 ex_diploma.docx
-.git
 zoom_0.mp4
-.*
 *.txt
+.vscode*
+*.db
+*.sqlite3
 __pycache__/

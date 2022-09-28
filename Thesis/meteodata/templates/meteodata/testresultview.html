@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title%}Результаты{% endblock %}
+
+{% block menu%}
+    <div name="menu" class="menu-row">
+    <a href="{% url 'meteodata-main' %}" class="{{menu_status.0}}">Просмотр метеоданных</a>
+    <a href="{% url 'forecast-main' %}" class="{{menu_status.0}}">Прогнозирование метеоданных</a>
+    <a href="{% url 'anomaly-main' %}" class="{{menu_status.2}}">Анализ метеоданных</a>
+    </div>
+{% endblock menu%}
+{% block submenu%}
+{% endblock submenu%}
+
+{% block content%}
+
+<div class="block block-center">
+    <div><span>Результаты тестирования алгоритмов обработки и анализа</span></div>
+    <div><span>Найдено аномалий в записях: {{ anomalies_count}}</span></div></br>
+    <div name="diagrams">
+        <img style="padding-left: 320px;" src="{% static 'saved_figure.png' %}" alt="Current value status" width="50%" height="30%">
+    </div>
+    </br>
+    <table style="padding-left: 360px;">
+        <tr><td></td><td> </td><td>Изначальные данные</td><td>Очищеные данные</td></tr>
+        <tr><td>Кол-во записей</td><td></td> <td>{{ all_records_count}}</td><td>{{ clear_records_count}}</td></tr>
+        <tr><td>Точность алгоритма прогнозирования</td><td> </td><td>{{ all_result_persentage}}%</td><td>{{ clear_result_persentage}}%</td></tr>
+    </table>
+</div>
+
+{% endblock %}
