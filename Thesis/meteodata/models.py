@@ -82,26 +82,6 @@ class Meteodata(models.Model):
         verbose_name_plural = "Meteodata"
 
 
-class ClearMeteodata(models.Model):
-
-    datetime = models.DateTimeField("Date_and_time")
-    place = models.BigIntegerField("Place_id")
-    temperature = models.FloatField("Air temperature")
-    wind_way = models.BigIntegerField("Wind way")
-    wind_speed = models.FloatField("Wind speed")
-    air_pressure = models.FloatField("Pressure")
-    water_pressure = models.FloatField("Sea_level_pressure")
-    weather = models.TextField("Weather")
-
-    def __str__(self):
-        return self.pk
-
-    class Meta:
-
-        verbose_name = "Clean meteodata"
-        verbose_name_plural = "Clean meteodata"
-
-
 class ForecastMeteodata(models.Model):
 
     datetime = models.DateTimeField("Date_and_time")
@@ -120,26 +100,6 @@ class ForecastMeteodata(models.Model):
 
         verbose_name = "Forecast"
         verbose_name_plural = "Forecast"
-
-
-class ClearForecastMeteodata(models.Model):
-
-    datetime = models.DateTimeField("Date_and_time")
-    place = models.BigIntegerField("Place_id")
-    temperature = models.FloatField("Air temperature")
-    wind_way = models.BigIntegerField("Wind way")
-    wind_speed = models.FloatField("Wind speed")
-    air_pressure = models.FloatField("Pressure")
-    water_pressure = models.FloatField("Sea_level_pressure")
-    weather = models.TextField("Weather")
-
-    def __str__(self):
-        return self.pk
-
-    class Meta:
-
-        verbose_name = "Clean forecast"
-        verbose_name_plural = "Clean forecast"
 
 
 class MeteodataAnomalies(models.Model):
