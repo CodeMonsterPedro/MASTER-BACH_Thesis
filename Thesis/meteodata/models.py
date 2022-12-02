@@ -3,9 +3,9 @@ from django.db import models
 
 class Test(models.Model):
 
-    test_members = models.TextField("Members_list")
-    test_date = models.DateTimeField("Date_and_time")
-    test_records = models.TextField("Test_records_list")
+    neuralnet_id = models.BigIntegerField("NeuralNet_id")
+    datetime = models.DateTimeField("Date_and_time")
+    conclusion = models.TextField("Conclusion")# accurancy:... 
 
     def __str__(self):
         return "({})members: {}".format(self.pk, self.test_records)
@@ -16,30 +16,21 @@ class Test(models.Model):
         verbose_name_plural = "Test"
 
 
-class Test_Record(models.Model):
-
-    neuralnet_id = models.BigIntegerField("NeuralNet_id")
-    summary_result = models.CharField("Summary result", max_length=80)
-    forecast_result = models.CharField("Forecast result", max_length=80)
-    anomalies_result = models.CharField("Anomalies result", max_length=80)
-
-    def __str__(self):
-        return "({})--{}".format(self.pk, self.neuralnet_id)
-
-    class Meta:
-
-        verbose_name = "Test_Record"
-        verbose_name_plural = "Test_Record"
-
-
 class NeuralNet(models.Model):
 
     name = models.CharField("Name", max_length=80)
-    file_data = models.FileField(upload_to='models/')
-    description = models.TextField("Description")
+    file_data = models.FileField('NetFile', upload_to='models/')
+    target = models.BigIntegerField("Target")# forecast - 1, summary - 2
+    metric = models.BigIntegerField("Metric")
+    description = models.TextField("Description")# layers count, neirons in layer, type of layers etc.
+    conclusion = models.TextField("Conclusion")# importance of input parameters 
 
     def __str__(self):
         return "({})--{}".format(self.pk, self.name)
+
+    def delete(self, *args, **kwargs):
+        self.file_data.delete()
+        super().delete(*args, **kwargs)
 
     class Meta:
 
@@ -47,25 +38,11 @@ class NeuralNet(models.Model):
         verbose_name_plural = "NeuralNet"
 
 
-class Place(models.Model):
-
-    name = models.CharField("Name", max_length=80)
-    x = models.FloatField("geoX")
-    y = models.FloatField("geoY")
-
-    def __str__(self):
-        return "({})--{}".format(self.pk, self.name)
-
-    class Meta:
-
-        verbose_name = "Region"
-        verbose_name_plural = "Region"
-
-
 class Meteodata(models.Model):
 
     datetime = models.DateTimeField("Date_and_time")
     place = models.BigIntegerField("Place_id")
+    place_name = models.CharField("Place_name", max_length=80)
     temperature = models.FloatField("Air temperature")
     wind_way = models.BigIntegerField("Wind way")
     wind_speed = models.FloatField("Wind speed")
@@ -86,6 +63,7 @@ class ForecastMeteodata(models.Model):
 
     datetime = models.DateTimeField("Date_and_time")
     place = models.BigIntegerField("Place_id")
+    place_name = models.CharField("Place_name", max_length=80)
     temperature = models.FloatField("Air temperature")
     wind_way = models.BigIntegerField("Wind way")
     wind_speed = models.FloatField("Wind speed")
@@ -100,18 +78,3 @@ class ForecastMeteodata(models.Model):
 
         verbose_name = "Forecast"
         verbose_name_plural = "Forecast"
-
-
-class MeteodataAnomalies(models.Model):
-
-    meteodata_pk = models.BigIntegerField("Record_id")
-    fieldname = models.TextField("Field_name")
-    value = models.TextField("Value")
-    anomaly = models.TextField("Anomaly")
-
-    class Meta:
-        verbose_name = "Anomalies"
-        verbose_name_plural = "Anomalies"
-
-    def __str__(self):
-        return self.pk

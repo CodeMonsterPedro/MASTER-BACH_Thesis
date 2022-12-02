@@ -80,7 +80,7 @@ WSGI_APPLICATION = 'Thesis.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR.parent / 'DBs/maindb.sqlite3',
+        'NAME': BASE_DIR / '../Resources/DBs/maindb.sqlite3',
     }
 }
 

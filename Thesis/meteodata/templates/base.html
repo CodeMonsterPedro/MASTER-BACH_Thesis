@@ -6,12 +6,18 @@
     <title>{% block title %}Погода{% endblock %}</title>
     <link rel="stylesheet" type="text/css" href=" {% static 'css/base.css' %}"/>
 </head>
-<body background: >
+<body background:>
 <div name="menu" class="menu-row">
-    {% block menu%}
-    {%endblock%}
-    {% block submenu%}
-    {%endblock%}
+    <div name="menu" class="menu-row">
+        <a href="{% url 'meteodata' %}" class="{% if current_menu_page == 0 %} button-active {% else %} button {% endif %}">Meteodata</a>
+        <a href="{% url 'forecast' %}" class="{% if current_menu_page == 1 %} button-active {% else %} button {% endif %}">Forecast</a>
+        <a href="{% url 'neuralnets' %}" class="{% if current_menu_page == 2 %} button-active {% else %} button {% endif %}">Neural nets</a>
+        <a href="{% url 'tests' %}" class="{% if current_menu_page == 3 %} button-active {% else %} button {% endif %}">Tests</a>
+    </div>
+    <div name="menu" class="menu-row">
+        <a href="{% url 'meteodata_update' %}" class="button">Update data</a>
+        <a href="{% url 'forecast' %}" class="button">Make forecast</a>
+    </div>
 </div>
    {% block content %}
    {% endblock %}
