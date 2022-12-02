@@ -1,27 +1,22 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import Model
-from ..DB import DBControl
 from datetime import datetime, date, time
 import numpy as np
-import subprocess
-import sys
-import random
+import subprocess, sys, random
 import pandas as pd
-import numpy as np
 from sklearn import metrics
 from sklearn.model_selection import train_test_split 
-import math
+import math, pickle, re
 import time as ttime
-import pickle
-import re
-
+import os
+from ...models import Meteodata, ForecastMeteodata, NeuralNet
 
 
 class ForecastSummaryModel:
 
-    def __init__(self, modelName='fullconnect', dbName='meteodata_forecastmeteodata'):
-        self._db = DBControl()
+    def __init__(self, model_id='1', modelName='my_fullconnect', dbName='meteodata_forecastmeteodata'):
+        self._target = 'summary'
         self._weatherList = {
             "Туман ослабел (небо видно)": "Туман","сплошной туман с осаждением изморози": "Туман","туман усиливается, небо видно": "Туман",
             "Туман без изменений (небо не видно)": "Туман","Туман начался (усилился). Небо не видно": "Туман",
@@ -178,7 +173,7 @@ class ForecastSummaryModel:
             "Зарница": "Зарница",
         }
         self._correctWeatherDict = {}
-        self._method = []
+        self._neuralNetObject = []
         self._metric = 'accuracy'
         self._loss = 'sparse_categorical_crossentropy'
         self._optimizer = 'adam'
@@ -186,12 +181,6 @@ class ForecastSummaryModel:
         self._dbName = dbName
         self._accurancy = 89.5
         self._epochs = 10
-        self._values = []
-        self._labels = []
-        self._train_values = []
-        self._train_labels = []
-        self._test_values = []
-        self._test_labels = []
         self._correctWeatherDict = {}
         self._scoreResult = 0
         self._metricResult = 0
@@ -203,17 +192,90 @@ class ForecastSummaryModel:
         for item in tempWeatherList:
             self._correctWeatherDict.update({item: i})
             i = i + 1.0
-        self.buildPerceptron()
-        self._startTraining()
+        if model_id != '':
+            self.loadNet(model_id)
 
-    def buildPerceptron(self):
-        data = self._getDataSet()
-        self._buildDataForPerceptron(data)
+    def __del__(self):
+        tmp = subprocess.check_output('pwd', shell=True).decode().rstrip()
+        subprocess.check_output("rm -rv {}/media/models/{}".format(tmp, self._modelName), shell=True)
+
+    def loadDataSet(self, test=False):
+        dataSet = 0
+        if test:
+            dataSet = ('datetime', 'place', 'temperature', 'wind_way', 'wind_speed', 'air_pressure', 'water_pressure', 'weather')
+        else:
+            dataSet = ('datetime', 'place', 'temperature', 'wind_way', 'wind_speed', 'air_pressure', 'water_pressure')
+        if self._dbName == 'meteodata_forecastmeteodata':
+            return ForecastMeteodata.objects.all().order_by('datetime').values_list(dataSet)
+        elif self._dbName == 'meteodata_meteodata':
+            return Meteodata.objects.all().order_by('datetime').values_list(dataSet)
+
+    def loadNet(self, net_id):
+        print('start load net: ', net_id)
+        obj = NeuralNet.objects.get(pk=net_id)
+        f = obj.file_data
+        self._modelName = obj.name
+        tmp = subprocess.check_output('pwd', shell=True).decode().rstrip()
+        if not os.path.exists('{}/media/models/{}'.format(tmp, self._modelName)):
+            subprocess.check_output("file-roller -h {}/media/{}".format(tmp, str(f)), shell=True)
+        self._neuralNetObject = keras.models.load_model('{}/media/models/{}'.format(tmp, self._modelName))
+        print('finish load')
+
+    def test(self, metric='accuracy'):
+        testData = self.loadDataSet(True)
+        data = self._encode(testData)
+        test_loss, test_acc = self._neuralNetObject.evaluate(data['test_values'],  data['test_labels'], verbose=2)#TODO add different metrics
+        test_result = test_acc
+        return test_result
+
+    def predict(self, data):
+        result = []
+        tmpData = self.encode(data)
+        for row in tmpData['values']:
+            result.append(self._neuralNetObject.predict(row))
+        return self.decode(result)
+    
+    def encode(self, data):
+        values = data # TODO make good normalisation func?
+        resultList = []
+        for i in range(len(values)):
+            tmp = []
+            datetimeData = datetime.strptime(values[i][0][:-6], "%Y-%m-%d %H:%M:%S")
+            d = datetimeData
+            tmp.append(d.year)
+            tmp.append(d.month)
+            tmp.append(d.day) # 0 - date
+            tmp.append(d.hour)
+            tmp.append(float(values[i][1])) # 1 - place
+            tmp.append(float(values[i][3])) # 3 - temperature
+            tmp.append(float(values[i][4])) # 4 - wind_way
+            tmp.append(float(values[i][5])) # 5 - wind_speed
+            tmp.append(float(values[i][6])) # 6 - air_pressure
+            tmp.append(float(values[i][7])) # 7 - water_pressure
+            resultList.append(tmp)
+        values = resultList
+        train_values, test_values = train_test_split(values, test_size=0.20, random_state=42)
+        print(self._train_values[:20], self._test_values[:20], self._train_labels[:20], self._test_labels[:20])
+        d = {'values': values, 'train_values': train_values, 'test_values': test_values}
+        return d
+
+    def decode(self, data):
+        val = self._correctWeatherDict.values()
+        keys = self._correctWeatherDict.keys()
+        resultList = []
+        for row in data:
+            for i in range(len(val)):
+                if row == val[i]:
+                    resultList.append(keys[i])
+        return resultList
+
+    def _buildPerceptron(self):
+        data = self._encode(self.loadDataSet())
         self._buildPerceptronNet()
 
     def _startTraining(self):
-        self._method.fit(self._train_values, self._train_labels, epochs=self._epochs)
-        test_loss, test_acc = self._method.evaluate(self._test_values,  self._test_labels, verbose=2)
+        self._neuralNetObject.fit(self._train_values, self._train_labels, epochs=self._epochs)
+        test_loss, test_acc = self._neuralNetObject.evaluate(self._test_values,  self._test_labels, verbose=2)
         self._accurancy = test_acc
         print('loss', test_loss)
         print('acc', test_acc)
@@ -225,152 +287,62 @@ class ForecastSummaryModel:
         self._test_labels = []
 
     def _buildPerceptronNet(self):
-        self._method = keras.Sequential()
-        self._method.add(keras.layers.InputLayer(input_shape=(len(self._values[0]),)))
-        self._method.add(keras.layers.Dense(190, activation='relu'))
-        self._method.add(keras.layers.Dense(1900, activation='relu'))
-        self._method.add(keras.layers.Dense(190, activation='relu'))
-        self._method.add(keras.layers.Dense(len(list(self._correctWeatherDict.keys())) + 1, activation='softmax'))
-        self._method.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metric)
-        self._method.summary()
+        self._neuralNetObject = keras.Sequential()
+        self._neuralNetObject.add(keras.layers.InputLayer(input_shape=(len(self._values[0]),)))
+        self._neuralNetObject.add(keras.layers.Dense(190, activation='relu'))
+        self._neuralNetObject.add(keras.layers.Dense(1900, activation='relu'))
+        self._neuralNetObject.add(keras.layers.Dense(190, activation='relu'))
+        self._neuralNetObject.add(keras.layers.Dense(len(list(self._correctWeatherDict.keys())) + 1, activation='softmax'))
+        self._neuralNetObject.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metric)
+        self._neuralNetObject.summary()
 
-    def _buildDataForPerceptron(self, data):
-        self._values = data
-        for i in range(len(self._values)):
-            weather = self._values[i][-1]
-            self._labels.append(weather)
-            self._values[i].pop(len(self._values[i]) - 1)
-        for i in range(len(self._labels)):
+    def _encode(self, data):
+        values = data
+        labels = []
+        for i in range(len(values)):
+            weather = values[i][-1]
+            labels.append(weather)
+            values[i].pop(len(values[i]) - 1)
+        for i in range(len(labels)):
             try:
-                temp = self._labels[i]
+                temp = labels[i]
                 if temp.isdigit():
-                    self._labels[i] = "Нет"
+                    labels[i] = "Нет"
                 else:
-                    self._labels[i] = self._weatherList[self._labels[i]]
+                    labels[i] = self._weatherList[labels[i]]
             except:
-                self._labels[i] = "Нет"
-        for i in range(len(self._labels)):
-            self._labels[i] = (self._correctWeatherDict[self._labels[i]])
+                labels[i] = "Нет"
+        for i in range(len(labels)):
+            labels[i] = (self._correctWeatherDict[labels[i]])
         resultList = []
-        for i in range(len(self._values)):
+        for i in range(len(values)):
             tmp = []
-            datetimeData = datetime.strptime(self._values[i][0][:-6], "%Y-%m-%d %H:%M:%S")# 0 - datetime, 1 - place, 2 - placeName, 3 - temperature, 4 - wind_way, 5 - wind_speed, 6 - air_pressure, 7 - water_pressure, 8 - weather
+            datetimeData = datetime.strptime(values[i][0][:-6], "%Y-%m-%d %H:%M:%S")
             d = datetimeData
             tmp.append(d.year)
             tmp.append(d.month)
             tmp.append(d.day) # 0 - date
             tmp.append(d.hour)
-            tmp.append(float(self._values[i][1])) # 1 - place
-            tmp.append(float(self._values[i][3])) # 3 - temperature
-            tmp.append(float(self._values[i][4])) # 4 - wind_way
-            tmp.append(float(self._values[i][5])) # 5 - wind_speed
-            tmp.append(float(self._values[i][6])) # 6 - air_pressure
-            tmp.append(float(self._values[i][7])) # 7 - water_pressure
+            tmp.append(float(values[i][1])) # 1 - place
+            tmp.append(float(values[i][3])) # 3 - temperature
+            tmp.append(float(values[i][4])) # 4 - wind_way
+            tmp.append(float(values[i][5])) # 5 - wind_speed
+            tmp.append(float(values[i][6])) # 6 - air_pressure
+            tmp.append(float(values[i][7])) # 7 - water_pressure
             resultList.append(tmp)
-        self._values = resultList
-        self._train_values, self._test_values, self._train_labels, self._test_labels = train_test_split(self._values, self._labels, test_size=0.20, random_state=42)
+        values = resultList
+        train_values, test_values, train_labels, test_labels = train_test_split(values, labels, test_size=0.20, random_state=42)
         print(self._train_values[:20], self._test_values[:20], self._train_labels[:20], self._test_labels[:20])
+        d = {'values': values, 'lables': labels, 'train_values': train_values, 'test_values': test_values, 'train_labels': train_labels, 'test_labels': test_labels}
+        return d
 
-    def _getDataSet(self):
-        data = []
-        if self._dbName == 'meteodata_forecastmeteodata':
-            data = self._db.getMeteodata(filter='datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather', where='ORDER BY datetime')
-        else:
-            data = self._db.getClearMeteodata(filter='datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure, weather', where='ORDER BY datetime')
-        return data
-
-    def _convertToNormal(self, data, ttype=2):
-        val = self._correctWeatherDict.values()
-        keys = self._correctWeatherDict.keys()
-        if ttype == 1:
-            for i in range(len(val)):
-                if data == val[i]:
-                    return keys[i]
-        else:
-            resultList = []
-            for row in data:
-                for i in range(len(val)):
-                    if row == val[i]:
-                        resultList.append(keys[i])
-            return resultList
-
-    def _prepareData(self, data, ttype=2):
-        valtmp = []
-        if ttype == 1:
-            values = data
-            labels = []
-            weather = values[-1]
-            labels.append(weather)
-            values.pop(len(values) - 1)
-            if labels.isdigit():
-                labels = "Нет"
-            else:
-                labels = self._weatherList[labels]
-            labels = (self._correctWeatherDict[labels])
-            valtmp = []
-            datetimeData = datetime.strptime(values[0][:-6], "%Y-%m-%d %H:%M:%S")
-            d = datetimeData
-            valtmp.append(d.year)
-            valtmp.append(d.month)
-            valtmp.append(d.day) # 0 - date
-            valtmp.append(d.hour)
-            valtmp.append(float(values[1])) # 1 - place
-            valtmp.append(float(values[3])) # 3 - temperature
-            valtmp.append(float(values[4])) # 4 - wind_way
-            valtmp.append(float(values[5])) # 5 - wind_speed
-            valtmp.append(float(values[6])) # 6 - air_pressure
-            valtmp.append(float(values[7])) # 7 - water_pressure
-            return valtmp
-        else:
-            values = data
-            labels = []
-            for i in range(len(values)):
-                weather = values[i][-1]
-                labels.append(weather)
-                values[i].pop(len(values[i]) - 1)
-            for i in range(len(labels)):
-                try:
-                    temp = labels[i]
-                    if temp.isdigit():
-                        labels[i] = "Нет"
-                    else:
-                        labels[i] = self._weatherList[labels[i]]
-                except:
-                    labels[i] = "Нет"
-            for i in range(len(labels)):
-                labels[i] = (self._correctWeatherDict[labels[i]])
-            resultList = []
-            for i in range(len(values)):
-                tmp = []
-                datetimeData = datetime.strptime(values[i][0][:-6], "%Y-%m-%d %H:%M:%S")
-                d = datetimeData
-                tmp.append(d.year)
-                tmp.append(d.month)
-                tmp.append(d.day) # 0 - date
-                tmp.append(d.hour)
-                tmp.append(float(values[i][1])) # 1 - place
-                tmp.append(float(values[i][3])) # 3 - temperature
-                tmp.append(float(values[i][4])) # 4 - wind_way
-                tmp.append(float(values[i][5])) # 5 - wind_speed
-                tmp.append(float(values[i][6])) # 6 - air_pressure
-                tmp.append(float(values[i][7])) # 7 - water_pressure
-                resultList.append(tmp)
-            values = resultList
-            return values
-
-    def predict(self, data, ttype=2):
-        l = []
-        if ttype == 1:
-            tmp = self._prepareData(data, 1)
-            l = self._method.predict(tmp)
-        else:
-            for row in data:
-                tmp = self._prepareData(row,1)
-                l.append(self._method.predict(tmp))
-        return self._convertToNormal(l, ttype)
-
-    def getStatistic(self):
-        return self._accurancy
+    def _saveNet(self, name='Perceptron'):
+        d = str(date.today())
+        t = ttime.localtime()
+        t = ttime.strftime("%M%S", t)
+        fullName = '' + d + t + '--' + name
+        subprocess.call('cd ' + MEDIA_ROOT + '/models & mkdir {}'.format(fullName))
+        self._neuralNetObject.save(MEDIA_ROOT + '/models/{}'.format(fullName))
 
 if __name__ == "__main__":
     s = subprocess.call('pwd')
