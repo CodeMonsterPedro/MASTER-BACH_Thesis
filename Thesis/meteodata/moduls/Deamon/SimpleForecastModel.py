@@ -1,7 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import Model
-from ..DB import DBControl
 from datetime import datetime, date, time, timedelta
 from sklearn import metrics
 from sklearn.model_selection import train_test_split 
@@ -11,7 +10,7 @@ import numpy as np
 class SimpleForecastModel:
 
     def __init__(self, modelName='rnn', dbName='meteodata_meteodata'):
-        self._db = DBControl()
+        self._db = 0
         self._method = []
         self._metric = 'accuracy'
         self._loss = 'mean_squared_error'
