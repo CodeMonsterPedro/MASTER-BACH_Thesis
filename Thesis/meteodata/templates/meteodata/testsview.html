@@ -1,8 +1,9 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title%}Forecast{% endblock %}
+{% block title%}Meteodata{% endblock %}
 {% block content%}
 <div class="block block-center">
+    
     {% if is_paginated %}
         {% if page_obj.has_previous %}
         <a class="button" href="?page=1">First</a>
@@ -18,18 +19,17 @@
         {% endfor %}
 
         {% if page_obj.has_next %}
-        <a class="button" href="?page={{ page_obj.next_page_number }}">Next</a>
-        <a class="button" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+            <a class="button" href="?page={{ page_obj.next_page_number }}">Next</a>
+            <a class="button" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
         {% endif %}
     {% endif %}
-
 
     <table class="main-table">
         <thead>
             <tr class="main-table-labels">
                 {% for row in top_labels%}
                 <td class="active">
-                    <form method="post" action="{% url 'forecast' %}">
+                    <form method="post" action="{% url 'tests' %}">
                         {% csrf_token %}
                         <input type="hidden" name="reason" value="sort">
                         <input type="hidden" name="sort_option" value={{row}}>
@@ -40,19 +40,13 @@
             </tr>
         </thead>
         <tbody>
-            {% if ForecastMeteodata.count > 0 %}
-                {% for row in ForecastMeteodata%}
+            {% if Test.count > 0 %}
+                {% for row in Test %}
                     <tr class="main-table-row">
                         <td><center>{{ row.pk }}</center></td>
-                        <td><center>{{ row.datetime }}</center></td>
-                        <td><center>{{ row.place }}</center></td>
-                        <td><center>{{ row.place_name }}</center></td>
-                        <td><center>{{ row.temperature }}</center></td>
-                        <td><center>{{ row.wind_way }}</center></td>
-                        <td><center>{{ row.wind_speed }}</center></td>
-                        <td><center>{{ row.air_pressure }}</center></td>
-                        <td><center>{{ row.water_pressure }}</center></td>
-                        <td><center>{{ row.weather }}</center></td>
+                        <td><center>{{ row.neuralnet_id }}</center></td>
+                        <td><center>{{ row.test_date }}</center></td>
+                        <td><center>{{ row.conclusion }}</center></td>
                     </tr>
                 {% endfor %}
             {% else %}
@@ -61,4 +55,5 @@
         </tbody>
     </table>
 </div>
+
 {% endblock %}

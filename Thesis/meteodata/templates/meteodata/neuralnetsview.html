@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title%}Neural nets{% endblock %}
+{% block content%}
+<div class="block block-center">
+    {% if is_paginated %}
+        {% if page_obj.has_previous %}
+        <a class="button" href="?page=1">First</a>
+        <a class="button" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <a class="button" href="?page={{ num }}">{{ num }}</a>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a class="button" href="?page={{ num }}">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <a class="button" href="?page={{ page_obj.next_page_number }}">Next</a>
+        <a class="button" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+        {% endif %}
+    {% endif %}
+
+
+    <table class="main-table">
+        <div>
+            <form method="post" action="{% url 'neuralnets' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="reason" value="addFile">
+                <input type="file" name="file_data">
+                <select name="target">
+                    <option value="1">Forecast</option>
+                    <option value="2">Summary</option>
+                </select>
+                <select name="metric">
+                    <option value="1">AUC</option>
+                    <option value="2">Accuracy</option>
+                    <option value="3">BinaryCrossentropy</option>
+                    <option value="4">CosineSimilarity</option>
+                    <option value="5">FalseNegatives</option>
+                    <option value="6">Hinge</option>
+                    <option value="7">IoU</option>
+                    <option value="8">KLDivergence</option>
+                    <option value="9">Mean</option>
+                    <option value="10">MeanAbsoluteError</option>
+                </select>
+                <input type="text" name="description">
+                <center><button type="submit">Add</button></center>
+            </form>
+        </div>
+        <thead>
+            <tr class="main-table-labels">
+                {% for row in top_labels%}
+                <td class="active">
+                    <form method="post" action="{% url 'neuralnets' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="reason" value="sort">
+                        <input type="hidden" name="sort_option" value={{row}}>
+                        <center><button type="submit">{{ row }}</button></center>
+                    </form>
+                </td>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% if NeuralNet.count > 0 %}
+                {% for row in NeuralNet%}
+                    <tr class="main-table-row">
+                        <td><center>{{ row.pk }}</center></td>
+                        <td><center>{{ row.name }}</center></td>
+                        <td><center>{{ row.target }}</center></td>
+                        <td><center>{{ row.metric }}</center></td>
+                        <td><center>{{ row.description }}</center></td>
+                        <td><center>{{ row.conclusion }}</center></td>
+                        <td> <form method="post" action="{% url 'neuralnets' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="reason" value="test">
+                            <input type="hidden" name="row_id" value={{ row.pk }}>
+                            <button type="submit">Test</button>
+                        </form>
+                        <form method="post" action="{% url 'neuralnets' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="reason" value="remove">
+                            <input type="hidden" name="row_id" value={{ row.pk }}>
+                            <button type="submit">Remove</button>
+                        </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <td><center>Nothing was found</center></td>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

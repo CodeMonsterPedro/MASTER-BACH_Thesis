@@ -1,106 +1,63 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title%}Метеоданные{% endblock %}
-
-{% block menu%}
-    <div name="menu" class="menu-row">
-    <a href="{% url 'meteodata-main' %}" class="{{menu_status.0}}">Просмотр метеоданных</a>
-    <a href="{% url 'forecast-main' %}" class="{{menu_status.1}}">Прогнозирование метеоданных</a>
-    <a href="{% url 'anomaly-main' %}" class="{{menu_status.2}}">Анализ метеоданных</a>
-    <form class="button {{ submenu_status.0}}" action="{% url 'meteodata-update' %}" method="post">
-        {% csrf_token %}
-        <button type="submit">Обновить данные</button>
-    </form>
-    </div>
-{% endblock menu%}
-{% block submenu%}
-{% endblock submenu%}
-
+{% block title%}Meteodata{% endblock %}
 {% block content%}
 <div class="block block-center">
-    <form action="{% url 'meteodata-filter' %}" method="post">
-        {% csrf_token %}
-        <span>№: </span>
-        <input class="semiinputfield" type="text" name="page" value={{ meteodata_page }}>
-        <span  width="20px">/{{ meteodata_max_pages }}</span></br>
-        <input type="text" placeholder="Введите данные для поиска..." class="inputfield" name="search" value={{ meteodata_search }}>
-        <button class="buttonAdditional" type="submit">Показать</button>
-    </form></br></br>
+    
+    {% if is_paginated %}
+        {% if page_obj.has_previous %}
+        <a class="button" href="?page=1">First</a>
+        <a class="button" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        {% endif %}
 
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <a class="button" href="?page={{ num }}">{{ num }}</a>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a class="button" href="?page={{ num }}">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
 
-    <table class="main-table">
-        <thead>
-            <tr class="main-table-labels">
-                {% for row in meteodata_top_labels%}
-                    <td class="active">
-                        <form method="post" action="{% url 'meteodata-sort' %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="field_name" value={{forloop.counter}}>
-                            <center><button type="submit">{{ row }}</button></center>
-                        </form>
-                    </td>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in meteodata%}
-                <tr class="main-table-row">
-                <td><center>{{ row.id }}</center></td>
-                <td><center>{{ row.datetime }}</center></td>
-                <td><center>{{ row.place }}</center></td>
-                <td><center>{{ row.placeName }}</center></td>
-                <td><center>{{ row.temperature }}</center></td>
-                <td><center>{{ row.wind_way }}</center></td>
-                <td><center>{{ row.wind_speed }}</center></td>
-                <td><center>{{ row.air_pressure }}</center></td>
-                <td><center>{{ row.water_pressure }}</center></td>
-                <td><center>{{ row.weather }}</center></td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-<div class="block block-center">
-    <form action="{% url 'meteodata-filter' %}" method="post">
-        {% csrf_token %}
-        <span>№: </span>
-        <input class="semiinputfield" type="text" name="page" value={{ clear_meteodata_page }}>
-        <span  width="20px">/{{ clear_meteodata_max_pages }}</span></br>
-        <input type="text" placeholder="Введите данные для поиска..." class="inputfield" name="search" value={{ clear_meteodata_search }}>
-        <button class="buttonAdditional" type="submit">Показать</button>
-    </form></br></br>
-
+        {% if page_obj.has_next %}
+            <a class="button" href="?page={{ page_obj.next_page_number }}">Next</a>
+            <a class="button" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+        {% endif %}
+    {% endif %}
 
     <table class="main-table">
         <thead>
             <tr class="main-table-labels">
-                {% for row in meteodata_top_labels%}
-                    <td class="active">
-                        <form method="post" action="{% url 'clear-meteodata-sort' %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="field_name" value={{forloop.counter}}>
-                            <center><button type="submit">{{ row }}</button></center>
-                        </form>
-                    </td>
+                {% for row in top_labels%}
+                <td class="active">
+                    <form method="post" action="{% url 'meteodata' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="reason" value="sort">
+                        <input type="hidden" name="sort_option" value={{row}}>
+                        <center><button type="submit">{{ row }}</button></center>
+                    </form>
+                </td>
                 {% endfor %}
             </tr>
         </thead>
         <tbody>
-            {% for row in clear_meteodata%}
-                <tr class="main-table-row">
-                <td><center>{{ row.id }}</center></td>
-                <td><center>{{ row.datetime }}</center></td>
-                <td><center>{{ row.place }}</center></td>
-                <td><center>{{ row.placeName }}</center></td>
-                <td><center>{{ row.temperature }}</center></td>
-                <td><center>{{ row.wind_way }}</center></td>
-                <td><center>{{ row.wind_speed }}</center></td>
-                <td><center>{{ row.air_pressure }}</center></td>
-                <td><center>{{ row.water_pressure }}</center></td>
-                <td><center>{{ row.weather }}</center></td>
-                </tr>
-            {% endfor %}
+            {% if Meteodata.count > 0 %}
+                {% for row in Meteodata %}
+                    <tr class="main-table-row">
+                        <td><center>{{ row.pk }}</center></td>
+                        <td><center>{{ row.datetime }}</center></td>
+                        <td><center>{{ row.place }}</center></td>
+                        <td><center>{{ row.place_name }}</center></td>
+                        <td><center>{{ row.temperature }}</center></td>
+                        <td><center>{{ row.wind_way }}</center></td>
+                        <td><center>{{ row.wind_speed }}</center></td>
+                        <td><center>{{ row.air_pressure }}</center></td>
+                        <td><center>{{ row.water_pressure }}</center></td>
+                        <td><center>{{ row.weather }}</center></td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <td><center>Nothing was found</center></td>
+            {% endif %}
         </tbody>
     </table>
 </div>
