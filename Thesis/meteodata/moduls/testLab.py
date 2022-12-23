@@ -65,8 +65,8 @@ class Base:
             for gpu in gpus:
                 tf.config.experimental.set_memory_growth(gpu, True)
         # base struct
-        self._conn = psycopg2.connect(dbname='Weather', user='postgres', password='12345', host='localhost')
-        self._curs = self._conn.cursor()
+        #self._conn = psycopg2.connect(dbname='Weather', user='postgres', password='12345', host='localhost')
+        #self._curs = self._conn.cursor()
         self._methodId = 0
         self._method = []
         self._metric = 'accuracy'

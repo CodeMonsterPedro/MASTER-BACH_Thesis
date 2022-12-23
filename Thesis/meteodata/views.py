@@ -6,12 +6,22 @@ from .moduls import MainMenu
 from .forms import NeuralNetForm
 
 
+'''
+GLOBAL TODO
+
+Add 2 nets for forecast
+Add 2 nets for summary
+Add global factors analise method
+
+'''
+
 def update_meteodata(request):
     MainMenu.data_update()
     return redirect('meteodata')
 
+
 def update_forecast(request):
-    MainMenu.forecast_update()
+    MainMenu.magic()
     return redirect('forecast')
 
 
@@ -98,7 +108,8 @@ class NeuralnetView(ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        self.neuralnets_top_labels.append('Options')
+        if 'Options' not in self.neuralnets_top_labels:
+            self.neuralnets_top_labels.append('Options')
         context.update({
             'top_labels': self.neuralnets_top_labels,
             'current_menu_page': 2

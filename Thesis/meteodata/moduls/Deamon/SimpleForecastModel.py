@@ -1,323 +1,119 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import Model
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time
+import numpy as np
+import pandas as pd
 from sklearn import metrics
 from sklearn.model_selection import train_test_split 
-import numpy as np
+import time as ttime
+from ...models import Meteodata, ForecastMeteodata, NeuralNet
+from tensorflow.keras.metrics import SparseCategoricalAccuracy, Precision, AUC, Recall, MeanIoU
+from .NNBase import NNBase
 
 
-class SimpleForecastModel:
+class SimpleForecastModel(NNBase):
 
-    def __init__(self, modelName='rnn', dbName='meteodata_meteodata'):
-        self._db = 0
-        self._method = []
-        self._metric = 'accuracy'
-        self._loss = 'mean_squared_error'
-        self._optimizer = 'adam'
-        self._modelName = modelName
-        self._dbName = dbName
-        self._accurancy = 89.5
-        self._epochs = 10
-        self._values = []
-        self._labels = []
-        self._train_values = []
-        self._train_labels = []
-        self._test_values = []
-        self._test_labels = []
-        self._correctWeatherDict = {}
-        self._scoreResult = 0
-        self._metricResult = 0
-        self._weatherList = {
-            "Туман ослабел (небо видно)": "Туман","сплошной туман с осаждением изморози": "Туман","туман усиливается, небо видно": "Туман",
-            "Туман без изменений (небо не видно)": "Туман","Туман начался (усилился). Небо не видно": "Туман",
-            "туман": "Туман",
-            "туман местами": "Туман",
-            "Поземные туманы сплошным слоем (высота меньше 2 м от поверхности земли)": "Туман",
-            "Туман без изменений (небо видно)": "Туман",
-            "туман ослабевает, небо видно": "Туман",
-            "Туман (с отложением изморози). Небо видно": "Туман",
-            "поземный туман клочками": "Туман",
-            "туман без изменений, небо не видно": "Туман",
-            "Туман (видимость менее 1 км)": "Туман",
-            "Туман ослабел (небо не видно)": "Туман",
-            "Туман (с отложением изморози). Небо не видно": "Туман",
-            "Туман начался (усилился). Небо видно": "Туман",
-            "туман ослабевает, неба не видно": "Туман",
-            "просвечивающий туман с осаждением изморози": "Туман",
-            "туман на расстоянии": "Туман",
-            "поземный туман сплошной": "Туман",
-            "туман усиливается, небо не видно": "Туман",
-            "В окрестности станции местами туман": "Туман",
-            "туман без изменений, небо видно": "Туман",
-            "Ливневой снег слабый": "Снег","Снег умеренный с перерывами": "Снег","Снег слабый с перерывами": "Снег","снег умеренный непрерывный": "Снег",
-            "Снежная крупа (возможно с дождем) умеренная или сильная": "Мелкий снег",
-            "ледяная или снежная крупа слабая": "Мелкий снег",
-            "Осадки (достигают поверхности земли вдали от станции (> 5 км))": "Мелкий снег",
-            "осадки в поле зрения, не достигающие земли": "Мелкий снег",
-            "осадки, достигающие земли, выпадающие на расстоянии более 5 км от станции": "Мелкий снег",
-            "снег умеренный с перерывами": "Снег","снег сильный непрерывный": "Снег",
-            "Снег умеренный непрерывный": "Снег",
-            "снег сильный с перерывами": "Снег","ливневый снег слабый": "Снег","снег": "Снег","снежные кристаллы": "Снег",
-            "снежные зерна": "Снег","Снег слабый непрерывный": "Снег","Снег сильный непрерывный": "Снег",
-            "ливневый снег умеренный или сильный": "Снег","Морось (незамерзающая). Снежные зерна": "Снег","Снег (возможно с туманом). Ледяные иглы": "Снег",
-            "ледяные иглы": "Снег","снег слабый с перерывами": "Снег", "морось или снежные зерна": "Снег",
-            "Ливневой снег умеренный или сильный": "Снег",
-            "Снег (возможно с туманом). Снежные зерна": "Снег",
-            "снег слабый непрерывный": "Снег","Снежная крупа (возможно с дождем) слабая": "Снег",
-            "ледяная или снежная крупа умеренная или сильная": "Снег","Снег сильный с перерывами": "Снег","Снег": "Снег",
-            "Поземок сильный": "Поземок","пыльный или песчаный поземок в срок или в последний час": "Поземок",
-            "слабый или умеренный поземок": "Поземок",
-            "сильный поземок": "Поземок",
-            "Поземок (слабый или умеренный)": "Поземок",
-            "Поземные туманы клочками, полосами(высота меньше 2 м от поверхности земли)": "Поземок",
-            "Гроза, дождь умеренный или сильный": "Гроза", "гроза в последний час, снег с дождем или крупа слабые в последний час": "Гроза",
-            "Гроза слабая или умеренная  (возможен град)": "Гроза","гроза в последний час, снег с дождем или крупа умеренные или сильные в последний час": "Гроза",
-            "Гроза слабая или умеренная (возможен дождь или снег)": "Гроза слабая",
-            "сильная буря усиливается": "Гроза", "слабая или умеренная буря усиливается": "Гроза",
-            "Гроза слабая или умеренная (возможен град)": "Гроза",
-            "гроза в срок с песчаной или пыльной бурей": "Гроза",
-            "Гроза, но без осадков": "Гроза","Гроза, дождь слабый": "Гроза",
-            "Пыльная (песчаная) буря, слабая или умеренная, ослабела": "",
-            "Гроза, снег или град, умеренные или сильные": "Гроза","Осадки (не достигают поверхности земли)": "",
-            "гроза сильная в срок с градом или крупой": "Гроза","Гроза слабая или умеренная  (возможен дождь или снег)": "Гроза",
-            "Гроза сильная (возможен дождь или снег)": "Гроза","Гроза": "Гроза",
-            "гроза слабая или умеренная в срок с дождем или снегом": "Гроза",
-            "слабая или умеренная буря ослабевает": "Гроза","Гроза сильная (возможен град)": "Гроза",
-            "гроза в последний час, дождь умеренный или сильный в срок": "Гроза",
-            "гроза без осадков на станции или в поле зрения": "Гроза",
-            "Гроза слабая или умеренная   (возможен дождь или снег)": "Гроза",
-            "гроза слабая или умеренная в срок с градом или крупой": "Гроза",
-            "гроза сильная в срок с дождем или снегом": "Гроза",
-            "Гроза слабая или умеренная (возможен дождь)": "Гроза","сильная буря без изменений": "Гроза",
-            "слабая или умеренная буря без изменений": "Гроза",
-            "Гроза, дождь со снегом слабые": "Гроза","гроза с осадками или без них": "Гроза",
-            "град умеренный или сильный": "Град","Град": "Град",
-            "осадки, достигающие земли, выпадающие на расстоянии менее 5 км от станции, но не на самой станции": "Дождь",
-            "Ливневый дождь со снегом": "Дождь со снегом","Морось (незамерзающая) Снежные зерна": "Мелкий дождь",
-            "Дождь со снегом (ледяной дождь)": "Дождь со снегом",
-            "Морось (незамерзающая) слабая с перерывами": "Мелкий дождь","морось слабая непрерывная": "Мелкий дождь",
-            "дождь слабый непрерывный": "Мелкий дождь",
-            "морось умеренная непрерывная": "Мелкий дождь",
-            "Морось замерзающая, образующая гололёд, умеренная или сильная": "Мелкий дождь",
-            "гроза в последний час, дождь слабый в срок наблюдения": "Мелкий дождь",
-            "морось умеренная с перерывами": "Мелкий дождь",
-            "Морось с дождем слабая": "Мелкий дождь",
-            "Морось (незамерзающая) умеренная непрерывная": "Мелкий дождь",
-            "морось умеренная или сильная с дождем": "Мелкий дождь",
-            "морось слабая с дождем": "Мелкий дождь",
-            "Морось (незамерзающая) умеренная с перерывами": "Мелкий дождь",
-            "Осадки (достигают поверхности земли)": "Мелкий дождь",
-            "Морось с дождем сильная или умеренная": "Мелкий дождь",
-            "Морось замерзающая, образующая гололёд, слабая": "Мелкий дождь",
-            "Морось (незамерзающая) сильная непрерывная": "Мелкий дождь",
-            "морось слабая замерзающая": "Мелкий дождь",
-            "морось сильная непрерывная": "Мелкий дождь",
-            "Морось (незамерзающая) слабая непрерывная": "Мелкий дождь",
-            "морось сильная с перерывами": "Мелкий дождь",
-            "морось умеренная или сильная замерзающая": "Мелкий дождь",
-            "дождь или морось со снегом  умеренные или сильные": "Мелкий дождь",
-            "морось слабая с перерывами": "Мелкий дождь",
-            "дождь сильный с перерывами": "Дождь","дождь слабый с перерывами": "Дождь",
-            "Дождь (незамерзающий) сильный с перерывами": "Дождь","дождь умеренный непрерывный": "Дождь",
-            "Дождь (незамерзающий) слабый непрерывный": "Дождь","Морось, дождь (замерзающие, образующие гололед)": "Дождь",
-            "дождь сильный непрерывный": "Дождь","дождь умеренный или сильный замерзающий": "Дождь",
-            "ледяной дождь": "Дождь","замерзающая морось или дождь": "Дождь","Ледяной дождь": "Дождь",
-            "дождь слабая замерзающий": "Дождь","ливневый дождь слабый": "Дождь",
-            "дождь умеренный с перерывами": "Дождь",
-            "Дождь (незамерзающий) слабый с перерывами": "Дождь","Дождь (незамерзающий) сильный непрерывный": "Дождь","Дождь (незамерзающий) умеренный непрерывный": "Дождь",
-            "Дождь (незамерзающий) умеренный с перерывами": "Дождь",
-            "Морось (незамерзающая) сильная с перерывами": "Дождь",
-            "Дождь (незамерзающий)": "Дождь","дождь": "Дождь","Дождь замерзающий, образующий гололёд, умеренный или сильный": "Дождь",
-            "дождь слабый замерзающий": "Дождь","Дождь замерзающий, образующий гололёд, слабый": "Дождь",
-            "дождь или морось со снегом слабые": "Дождь","Ливневой дождь слабый": "Ливневой дождь",
-            "ливневый снег или ливневый снег с дождем": "Дождь со снегом",
-            "Дождь со снегом слабый": "Дождь со снегом",
-            "Ливневой дождь со снегом слабый": "Дождь со снегом",
-            "ливневый дождь со снегом, слабый": "Дождь со снегом",
-            "дождь со снегом": "Дождь со снегом",
-            "Дождь со снегом (умеренный или сильный)": "Дождь со снегом",
-            "Ливневой дождь со снегом умеренный или сильный": "Дождь со снегом",
-            "Ливневой дождь умеренный или сильный": "Ливневой дождь",
-            "ливневый дождь со снегом, умеренный или сильный": "Ливневой дождь",
-            "ливневый дождь умеренный или сильный": "Ливневой дождь",
-            "Ливневой дождь очень сильный": "Ливневой дождь",
-            "Ливневый дождь": "Ливневой дождь",
-            "ливневый дождь": "Ливневой дождь",
-            "ливневый дождь очень сильный": "Ливневой дождь",
-            "Град (возможно с дождем)  слабый": "Град",
-            "град слабый": "Град",
-            "град или крупа": "Град",
-            "пыль, поднятая на станции или вблизи станции": "Пыльная буря",
-            "Пыльная (песчаная) буря, слабая или умеренная": "Пыльная буря",
-            "Пыль, песок или брызги, поднятые ветром": "Пыльная буря",
-            "пыль, принесенная издалека": "Пыльная буря",
-            "Пыль, взвешенная в воздухе в обширном пространстве, но не поднятая ветром": "Пыльная буря",
-            "Пыльная/песчаная буря": "Пыльная буря",
-            "Пыльные/песчаные сильные вихри, но пыльной/песчаной бури нет": "Пыльная буря",
-            "Пыльная или песчаная буря (с осадками или без них)": "Пыльная буря",
-            "пыльные или песчаные вихри": "Пыльная буря",
-            "Пыльная или песчаная буря (сильная) ослабела": "Пыльная буря",
-            "дымка": "Дымка",
-            "мгла": "Дымка",
-            "видимость ухудшена из-за дыма": "Дымка",
-            "Мгла": "Дымка",
-            "Ухудшение видимости из-за дыма или вулканического пепла": "Дымка",
-            "Дымка (видимость больше 1 км)": "Дымка",
-            "Шквал": "Шквал",
-            "шквал на станции или в поле зрения": "Шквал",
-            "смерч на станции или в поле зрения": "Смерч",
-            "облака рассеиваются": "Нет",
-            "небо без изменений": "Нет",
-            "Количество облаков не изменилось": "Нет",
-            "В окрестности станции тумана нет": "Нет",
-            "Количество облаков увеличилось": "Нет","Количество облаков уменьшилось": "Нет",
-            "облака развиваются": "Нет",
-            "наблюдения над развитием облаков не было": "Нет",
-            "//": "Нет",
-            "Изменение количества облаков неизвестно": "Нет",
-            "Метель низовая (слабая или умеренная)": "Метель",
-            "Метель низовая сильная": "Метель",
-            "сильная низовая метель": "Метель",
-            "слабая или умеренная низовая метель": "Метель",
-            "зарница": "Зарница",
-            "Зарница": "Зарница",
-        }
-        tempWeatherList = []
-        for item in self._weatherList.values():
-            if item not in tempWeatherList:
-                tempWeatherList.append(item)
-        i = 1.0
-        for item in tempWeatherList:
-            self._correctWeatherDict.update({item: i})
-            i = i + 1.0
-        self.buildRnn()
-        self._startTraining()
+    def __init__(self, model_id='4', modelName='my_rnn', dbName='meteodata_meteodata'):
+        NNBase.__init__(self, model_id=model_id, modelName=modelName, dbName=dbName)
 
-    def buildRnn(self):
-        data = self._getDataSet()
-        self._buildDataForRnn(data)
-        self._buildRnnNet()
+    def predict(self, data):
+        result = []
+        tmpData = self.encode(data)
+        j = 0
+        for row in tmpData:
+            result.append(self._neuralNetObject.predict(row))
+            if j % 500000 == 0:
+                print('Done: ', j)
+            j += 1
+        print(result[:10])
+        return self.decode(result)
+    
+    def _predict(self, data):
+        result = []
+        for row in data:
+            result.append(self._neuralNetObject.predict(row, verbose=1))
+        return result
 
-    def _startTraining(self):
-        self._method.fit(self._train_values, self._train_labels, epochs=self._epochs)
-        test_loss, test_acc = self._method.evaluate(self._test_values,  self._test_labels, verbose=2)
-        self._accurancy = test_acc
-        print('loss', test_loss)
-        print('acc', test_acc)
-        self._values = []
-        self._labels = []
-        self._train_values = []
-        self._train_labels = []
-        self._test_values = []
-        self._test_labels = []
+    def encode(self, data):
+        resultList = []
+        for i in range(len(data)):
+            tmp = []
+            d = data[i]['datetime']
+            tmp.append(float(d.year) / 10000)
+            tmp.append(float(d.month) / 100)
+            tmp.append(float(d.day)  / 100) # 0 - date
+            tmp.append(float(d.hour)  / 100)
+            tmp.append(float(data[i]['place'] - 30000) / 10000) # 1 - place
+            tmp.append(float(data[i]['temperature'] + 100) / 10000) # 3 - temperature
+            tmp.append(float(data[i]['wind_way']) / 10) # 4 - wind_way
+            tmp.append(float(data[i]['wind_speed']) / 10000) # 5 - wind_speed
+            tmp.append(float(data[i]['air_pressure']) / 10000) # 6 - air_pressure
+            tmp.append(float(data[i]['water_pressure']) / 10000) # 7 - water_pressure
+            resultList.append(tmp)
+        return resultList
 
-    def _buildRnnNet(self):
-        self._method = []
-        self._method = keras.Sequential()
-        self._method.add(keras.layers.Embedding(input_dim=len(self._values[0]), output_dim=len(self._labels[0])))
-        self._method.add(keras.layers.LSTM(100))
-        self._method.add(keras.layers.Dense(len(self._labels[0]), activation='softmax'))
-        self._method.compile(optimizer=self._optimizer, loss=self._loss, metrics=self._metric)
-        self._method.summary()
-
-    def _buildDataForRnn(self, data):
-        self._values = data
+    def _encode(self, data):
+        values = data
         valueList = []
         labelList = []
-        for i in range(len(self._values) - 1):
+        for i in range(len(values) - 1):
             valtmp = []
             lebtmp = []
-            datetimeData = datetime.strptime(self._values[i][0][:-6], "%Y-%m-%d %H:%M:%S")# 0 - datetime, 1 - place, 2 - placeName, 3 - temperature, 4 - wind_way, 5 - wind_speed, 6 - air_pressure, 7 - water_pressure, 8 - weather
-            d = datetimeData
+            d = values[i]['datetime']
             valtmp.append(float(d.year) / 10000)
             valtmp.append(float(d.month) / 100)
             valtmp.append(float(d.day)  / 100) # 0 - date
             valtmp.append(float(d.hour)  / 100)
-            valtmp.append(float(self._values[i][1] - 30000) / 10000) # 1 - place
-            valtmp.append(float(self._values[i][3] + 100) / 10000) # 3 - temperature -
-            valtmp.append(float(self._values[i][4]) / 10) # 4 - wind_way
-            valtmp.append(float(self._values[i][5]) / 10000) # 5 - wind_speed -
-            valtmp.append(float(self._values[i][6]) / 10000) # 6 - air_pressure
-            valtmp.append(float(self._values[i][7]) / 10000) # 7 - water_pressure
-            lebtmp.append(float(self._values[i + 1][3] + 100) / 10000)# 3 - temperature
-            lebtmp.append(float(self._values[i + 1][4]) / 10)# 4 - wind_way
-            lebtmp.append(float(self._values[i + 1][5]) / 10000)# 5 - wind_speed
-            lebtmp.append(float(self._values[i + 1][6]) / 10000)# 6 - air_pressure
-            lebtmp.append(float(self._values[i + 1][7]) / 10000)# 7 - water_pressure
+            valtmp.append(float(values[i]['place'] - 30000) / 10000) # 1 - place
+            valtmp.append(float(values[i]['temperature'] + 100) / 10000) # 3 - temperature -
+            valtmp.append(float(values[i]['wind_way']) / 10) # 4 - wind_way
+            valtmp.append(float(values[i]['wind_speed']) / 10000) # 5 - wind_speed -
+            valtmp.append(float(values[i]['air_pressure']) / 10000) # 6 - air_pressure
+            valtmp.append(float(values[i]['water_pressure']) / 10000) # 7 - water_pressure
+            lebtmp.append(float(values[i + 1]['temperature'] + 100) / 10000)# 3 - temperature
+            lebtmp.append(float(values[i + 1]['wind_way']) / 10)# 4 - wind_way
+            lebtmp.append(float(values[i + 1]['wind_speed']) / 10000)# 5 - wind_speed
+            lebtmp.append(float(values[i + 1]['air_pressure']) / 10000)# 6 - air_pressure
+            lebtmp.append(float(values[i + 1]['water_pressure']) / 10000)# 7 - water_pressure
             valueList.append(valtmp)
             labelList.append(lebtmp)
-        self._values = valueList
-        self._labels = labelList
-        self._train_values, self._test_values, self._train_labels, self._test_labels = train_test_split(self._values, self._labels, test_size=0.20, random_state=42)
+        train_values, test_values, train_labels, test_labels = train_test_split(valueList, labelList, test_size=0.20, random_state=42)
+        d = {'values': valueList, 'lables': labelList, 'train_values': train_values, 'test_values': test_values, 'train_labels': train_labels, 'test_labels': test_labels}
+        return d
 
-    def _getDataSet(self):
-        data = []
-        if self._dbName == 'meteodata_meteodata':
-            data = self._db.getMeteodata(filter='datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure', where='ORDER BY datetime')
-        else:
-            data = self._db.getClearMeteodata(filter='datetime, place, \"placeName\", temperature, wind_way, wind_speed, air_pressure, water_pressure', where='ORDER BY datetime')
-        return data
+    def decode(self, data):
+        valueList = []
+        for i in range(len(data)):
+            valtmp = {
+                'temperature': (float(data[i][0]) * 10000) - 100,
+                'wind_way': float(data[i][1]) * 10,
+                'wind_speed': float(data[i][2]) * 10000,
+                'air_pressure': float(data[i][3]) * 10000,
+                'water_pressure': float(data[i][4]) * 10000
+            }
+            valueList.append(valtmp)
+        print(valueList[:10])
+        return valueList
 
-    def _convertToNormal(self, row, data, ttype=2):
-        valtmp = []
-        valtmp.append(row[0])
-        valtmp.append(row[1])
-        valtmp.append(row[2])
-        valtmp.append(float(data[3] * 10000) - 100) # 3 - temperature -
-        valtmp.append(float(data[4]) * 10) # 4 - wind_way
-        valtmp.append(float(data[5]) * 10000) # 5 - wind_speed -
-        valtmp.append(float(data[6]) * 10000) # 6 - air_pressure
-        valtmp.append(float(data[7]) * 10000) # 7 - water_pressure
-        print(valtmp)
-        return valtmp
-
-    def _prepareData(self, data, ttype=2):
-        print('prepareData')
-        valtmp = []
-        if ttype == 1:
-            datetimeData = datetime.strptime(data[0][:-6], "%Y-%m-%d %H:%M:%S")# 0 - datetime, 1 - place, 2 - placeName, 3 - temperature, 4 - wind_way, 5 - wind_speed, 6 - air_pressure, 7 - water_pressure, 8 - weather
-            d = datetimeData
-            valtmp.append(float(d.year) / 10000)
-            valtmp.append(float(d.month) / 100)
-            valtmp.append(float(d.day)  / 100) # 0 - date
-            valtmp.append(float(d.hour)  / 100)
-            valtmp.append(float(data[1] - 30000) / 10000) # 1 - place
-            valtmp.append(float(data[3] + 100) / 10000) # 3 - temperature -
-            valtmp.append(float(data[4]) / 10) # 4 - wind_way
-            valtmp.append(float(data[5]) / 10000) # 5 - wind_speed -
-            valtmp.append(float(data[6]) / 10000) # 6 - air_pressure
-            valtmp.append(float(data[7]) / 10000) # 7 - water_pressure
-            return valtmp
-        else:
-            valList = []
-            for i in range(len(data)):
-                valtmp = []
-                datetimeData = datetime.strptime(data[i][0][:-6], "%Y-%m-%d %H:%M:%S")# 0 - datetime, 1 - place, 2 - placeName, 3 - temperature, 4 - wind_way, 5 - wind_speed, 6 - air_pressure, 7 - water_pressure, 8 - weather
-                d = datetimeData
-                valtmp.append(float(d.year) / 10000)
-                valtmp.append(float(d.month) / 100)
-                valtmp.append(float(d.day)  / 100) # 0 - date
-                valtmp.append(float(d.hour)  / 100)
-                valtmp.append(float(data[i][1] - 30000) / 10000) # 1 - place
-                valtmp.append(float(data[i][3] + 100) / 10000) # 3 - temperature -
-                valtmp.append(float(data[i][4]) / 10) # 4 - wind_way
-                valtmp.append(float(data[i][5]) / 10000) # 5 - wind_speed -
-                valtmp.append(float(data[i][6]) / 10000) # 6 - air_pressure
-                valtmp.append(float(data[i][7]) / 10000) # 7 - water_pressure
-                valList.append(valtmp)
-            return valList
-
-    def predict(self, data, ttype=2):
-        l = []
-        if ttype == 1:
-            tmp = self._prepareData(data, 1)
-            l = self._method.predict(tmp)
-        else:
-            for row in data:
-                tmp = self._prepareData(row, 1)
-                l.append(self._method.predict(tmp))
-        return self._convertToNormal(row, l, ttype)
-
-    def getStatistic(self):
-        return self._accurancy
+    def test(self):
+        testData = self._encode(self.loadDataSet())
+        predictResult = self._predict(testData['test_values'])
+        test_result = ''
+        sca = SparseCategoricalAccuracy()
+        sca.update_state(testData['test_labels'], predictResult)
+        test_result = test_result + ' SparseCategoricalAccuracy: {} '.format(sca.result().numpy())
+        prec = Precision()
+        prec.update_state(testData['test_labels'], predictResult)
+        test_result = test_result + ' Precision: {} '.format(prec.result().numpy())
+        auc = AUC()
+        auc.update_state(testData['test_labels'], predictResult)
+        test_result = test_result + ' AUC: {} '.format(auc.result().numpy())
+        rec = Recall()
+        rec.update_state(testData['test_labels'], predictResult)# "Recall" config: '"top_k": 1'
+        test_result = test_result + ' Recall: {} '.format(str(rec.result().numpy()))
+        miou = MeanIoU()
+        miou.update_state(testData['test_labels'], predictResult)
+        test_result = test_result + ' MeanIoU: {} '.format(str(miou.result().numpy()))
+        return test_result
+        
