@@ -2,13 +2,12 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import Model
 from datetime import datetime, date, time
-import numpy as np
 import subprocess, sys
-import pandas as pd
 from sklearn import metrics
 from sklearn.model_selection import train_test_split 
 import time as ttime
 import os
+import pickle
 from ...models import Meteodata, ForecastMeteodata, NeuralNet
 
 
@@ -186,9 +185,9 @@ class NNBase:
         if model_id != '':
             self.loadNet(model_id)
 
-    def __del__(self):
-        tmp = subprocess.check_output('pwd', shell=True).decode().rstrip()
-        subprocess.check_output("rm -rv {}/media/models/{}.zip".format(tmp, self._modelName), shell=True)
+    # def __del__(self):
+    #     tmp = subprocess.check_output('pwd', shell=True).decode().rstrip()
+    #     subprocess.check_output("rm -rv {}/media/models/{}".format(tmp, self._modelName), shell=True)
 
     def loadDataSet(self):
         if self._dbName == 'meteodata_meteodata':
@@ -201,10 +200,10 @@ class NNBase:
         obj = NeuralNet.objects.get(pk=net_id)
         f = obj.file_data
         self._modelName = obj.name
-        tmp = subprocess.check_output('pwd', shell=True).decode().rstrip()
-        if not os.path.exists('{}/media/models/{}'.format(tmp, self._modelName)):
-            subprocess.check_output("file-roller -h {}/media/{}.zip".format(tmp, str(f)), shell=True)
-        self._neuralNetObject = keras.models.load_model('{}/media/models/{}'.format(tmp, self._modelName))
+        wayToFile = subprocess.check_output('pwd', shell=True).decode().rstrip()
+        if not os.path.exists('{}/media/models/{}'.format(wayToFile, self._modelName)):
+            subprocess.check_output("file-roller -h {}/media/{}".format(wayToFile, str(f)), shell=True)
+        self._neuralNetObject = keras.models.load_model('{}/media/models/{}'.format(wayToFile, self._modelName))
         self._neuralNetObject.summary()
         print('finish load')
 
@@ -217,28 +216,37 @@ class NNBase:
         # subprocess.call('mkdir ' + tmp + '/media/models/{}'.format(fullName))
         self._neuralNetObject.save(tmp + '/media/models/{}'.format(fullName))
 
-    def buildRnnNet(self):
-        method = []
-        #'mean_absolute_error' +- --
-        # mean_absolute_percentage_error -- --
-        # mean_squared_logarithmic_error  --
-        # mean_squared_error +- --
-        metric = 'accuracy'
-        loss = 'mean_squared_logarithmic_error'
-        method = keras.Sequential()
-        method.add(keras.layers.Embedding(input_dim=10, output_dim=5))
-        method.add(keras.layers.LSTM(units=25, return_sequences=False))
-        method.add(keras.layers.Dense(5, activation='softmax'))
-        method.compile(optimizer='adam', loss=loss, metrics=metric)
-        method.summary()
-        return method
+    def write_weights(obj, afterTrain):
+        f = open('logs.txt', 'a')
+        strL = []
+        if afterTrain:
+            strL.append('train weights')
+        else:
+            strL.append('load weights')
+        s = ''
+        for i in range(len(obj.layers)):
+            s = s + 'layer #' + str(i)
+            for w in obj.layers[i].get_weights():
+                if isinstance(w, float):
+                    s = s + '-{}-'.format(str(w))
+                else:
+                    for x in w:
+                        s = s + '_{}_'.format(str(x))
+        strL.append(s)
+        strL.append('end weights')
+        f.writelines(strL)
+        f.close()
 
-    def buildPerceptronNet(self):
-        method = keras.Sequential()
-        method.add(keras.layers.Dense(20, activation='relu', input_shape=(10,)))
-        method.add(keras.layers.Dense(1000, activation='relu'))
-        method.add(keras.layers.Dense(100, activation='relu'))
-        method.add(keras.layers.Dense(len(list(self._correctWeatherDict.keys())) + 1, activation='softmax'))
-        method.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics='accuracy')
-        method.summary()
-        return method
+    def getHyperparametersLabels(self):
+        return [
+            'year',
+            'month',
+            'day',
+            'hour',
+            'place',
+            'temperature',
+            'wind_way',
+            'wind_speed',
+            'air_pressure',
+            'water_pressure'
+        ]

@@ -6,6 +6,9 @@ from ..models import Meteodata, ForecastMeteodata, NeuralNet, Test
 from ..forms import ForecastForm
 from .Tester import Tester
 from datetime import datetime
+import numpy as np
+from tensorflow.keras.metrics import SparseCategoricalAccuracy
+from .Deamon.NNBuilder import NNBuilder
 
 
 class MainMenu:
@@ -21,23 +24,32 @@ class MainMenu:
         return context
 
     def magic():
-        dataPerc = MainMenu.SummaryModel._encode(list(Meteodata.objects.all().order_by('-datetime').values()))
-        objPerc = MainMenu.SummaryModel.buildPerceptronNet()
+        # len(list(self._correctWeatherDict.keys())) + 1
+        dataPerc = MainMenu.SummaryModel._encode(list(Meteodata.objects.all().order_by('-datetime').values()[:500000]))
+        objPerc = NNBuilder.buildAutoencoder_ForSummary(len(list(MainMenu.SummaryModel._correctWeatherDict)) + 1)
         objPerc.fit(dataPerc['train_values'], dataPerc['train_labels'], epochs=10, use_multiprocessing=True)
-        for obj in objPerc.layers:
-            print(obj.get_weights()[0])
-        # print(objPerc.predict(dataPerc['test_values'][:20]))
-        # print(MainMenu.SummaryModel.decode(objPerc.predict(dataPerc['test_values'][:20])))
-        # print(MainMenu.SummaryModel.decode(dataPerc['test_labels'][:20]))
+        predictResult = objPerc.predict(dataPerc['test_values'][:20])
+        print(predictResult)
+        predictResult = MainMenu.SummaryModel._decode(predictResult)
+        print(predictResult)
         # MainMenu.SummaryModel._neuralNetObject = objPerc
         # MainMenu.SummaryModel.saveNet('newPerc')
-        # dataRnn = MainMenu.ForecastModel._encode(MainMenu.ForecastModel.loadDataSet())
+        # RNN
+        # dataRnn = MainMenu.ForecastModel._encode(list(Meteodata.objects.all().order_by('-datetime').values()[:500000]))
         # objRnn = MainMenu.ForecastModel.buildRnnNet()
         # objRnn.fit(dataRnn['train_values'], dataRnn['train_labels'], epochs=10, use_multiprocessing=True)
-        # print(objRnn.predict(dataRnn['test_values'][:20]))
-        # print(dataRnn['test_labels'][:20])
-        #MainMenu.ForecastModel._neuralNetObject = objRnn
-        #MainMenu.ForecastModel.saveNet('newRnn')
+        # tmp = objRnn.predict(dataRnn['test_values'][:20])
+        # print(type(tmp), type(tmp[0]), type(tmp[0][0]))
+        # print(dataRnn['train_values'][:5], dataRnn['train_labels'][:5], dataRnn['test_values'][:5], dataRnn['test_labels'][:5])
+        # predictResult = objRnn.predict(dataRnn['test_values'], verbose=1)
+        # test_result = ''
+        # sca = SparseCategoricalAccuracy()
+        # sca.update_state(dataRnn['test_labels'], predictResult)
+        # test_result = test_result + ' SparseCategoricalAccuracy: {} '.format(sca.result().numpy())
+        # print(test_result)
+        # MainMenu.ForecastModel._neuralNetObject = objRnn
+        # MainMenu.ForecastModel.saveNet('newRnn')
+        pass
 
     def data_update():
         print('data_update')
