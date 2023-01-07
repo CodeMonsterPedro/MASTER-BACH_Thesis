@@ -43,9 +43,8 @@
             {% if Test.count > 0 %}
                 {% for row in Test %}
                     <tr class="main-table-row">
-                        <td><center>{{ row.pk }}</center></td>
                         <td><center>{{ row.neuralnet_id }}</center></td>
-                        <td><center>{{ row.test_date }}</center></td>
+                        <td><center>{{ row.datetime }}</center></td>
                         <td><center>{{ row.conclusion }}</center></td>
                     </tr>
                 {% endfor %}

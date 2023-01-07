@@ -9,9 +9,7 @@ from .forms import NeuralNetForm
 '''
 GLOBAL TODO
 
-Add 2 nets for forecast
-Add 2 nets for summary
-Add global factors analise method
+Test all variants of NN and make them mork good
 
 '''
 
@@ -153,7 +151,7 @@ class TestsView(ListView):
     paginate_by = MainMenu.rows_count
     ordering = ['-datetime']
     allow_empty = True
-    test_top_labels = MainMenu.get_top_labels(Test)
+    test_top_labels = MainMenu.get_top_labels(Test, ["ID", ''])
 
     def get_queryset(self):
         qs = super().get_queryset()

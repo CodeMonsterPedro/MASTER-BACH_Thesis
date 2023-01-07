@@ -20,20 +20,8 @@ class SimpleForecastModel(NNBase):
     def predict(self, data):
         result = []
         tmpData = self.encode(data)
-        j = 0
-        for row in tmpData:
-            result.append(self._neuralNetObject.predict(row))
-            if j % 500000 == 0:
-                print('Done: ', j)
-            j += 1
-        print(result[:10])
+        result = self._neuralNetObject.predict(tmpData, verbose=1)
         return self.decode(result)
-    
-    def _predict(self, data):
-        result = []
-        for row in data:
-            result.append(self._neuralNetObject.predict(row, verbose=1))
-        return result
 
     def encode(self, data):
         resultList = []
@@ -98,22 +86,23 @@ class SimpleForecastModel(NNBase):
 
     def test(self):
         testData = self._encode(self.loadDataSet())
-        predictResult = self._predict(testData['test_values'])
+        predictResult = self._neuralNetObject.predict(testData['test_values'], verbose=1)
         test_result = ''
         sca = SparseCategoricalAccuracy()
         sca.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' SparseCategoricalAccuracy: {} '.format(sca.result().numpy())
+        test_result = test_result + ' SparseCategoricalAccuracy: {} '.format(float(f'{sca.result().numpy():.2f}'))
         prec = Precision()
         prec.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' Precision: {} '.format(prec.result().numpy())
+        test_result = test_result + ' Precision: {} '.format(float(f'{prec.result().numpy():.2f}'))
         auc = AUC()
         auc.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' AUC: {} '.format(auc.result().numpy())
+        test_result = test_result + ' AUC: {} '.format(float(f'{auc.result().numpy():.2f}'))
         rec = Recall()
         rec.update_state(testData['test_labels'], predictResult)# "Recall" config: '"top_k": 1'
-        test_result = test_result + ' Recall: {} '.format(str(rec.result().numpy()))
+        test_result = test_result + ' Recall: {} '.format(float(f'{rec.result().numpy():.2f}'))
         miou = MeanIoU()
         miou.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' MeanIoU: {} '.format(str(miou.result().numpy()))
+        test_result = test_result + ' MeanIoU: {} '.format(float(f'{miou.result().numpy():.2f}'))
         return test_result
+
         

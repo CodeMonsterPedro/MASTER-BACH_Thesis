@@ -2,6 +2,7 @@ from ..models import NeuralNet, Test
 from datetime import datetime
 from .Deamon.ForecastSummaryModel import ForecastSummaryModel
 from .Deamon.SimpleForecastModel import SimpleForecastModel
+import statistics
 
 
 class Tester:
@@ -16,16 +17,28 @@ class Tester:
             examinerLoader = SimpleForecastModel(model_id=examiner_id)
         elif obj.target == 2:
             examinerLoader = ForecastSummaryModel(model_id=examiner_id)
-        #conclusion = self.parametersImportantTest(examinerLoader)
+        conclusion = self.parametersImportantTest(examinerLoader)
         testResult = examinerLoader.test()
         print(testResult)
-        #self.saveConclusion(examiner_id, conclusion)
-        #self.saveTest(examiner_id, testResult)
+        self.saveConclusion(examiner_id, conclusion)
+        self.saveTest(examiner_id, testResult)
 
     def parametersImportantTest(self, examinerLoader):
-        conclusion = '-'
-        # print(model.layers[0].get_weights()[0])
-        # magic TODO add calculation of parameters importance
+        conclusion = ''
+        data = examinerLoader._neuralNetObject.layers[0].get_weights()[0]
+        result = {}
+        labels = examinerLoader.getHyperparametersLabels()
+        for i in range(len(data)):
+            result.update({labels[i]: statistics.mean(data[i])})
+        important = labels[0]
+        not_important = labels[0]
+        for key, value in result.items():
+            if value > result[important]:
+                important = key
+            if value < result[not_important]:
+                not_important = key
+        conclusion = 'Important: {} & Not important: {}'.format(important, not_important)
+        print(conclusion)
         return conclusion
 
     def saveConclusion(self, examiner_id, conclusion):
@@ -34,5 +47,8 @@ class Tester:
         obj.save()
 
     def saveTest(self, examiner_id, testResult):
-        obj = Test(neuralnet_id=examiner_id, test_date=datetime.today(), conclusion=testResult)
+        obj = Test.objects.get(neuralnet_id=examiner_id)
+        obj.datetime=datetime.today()
+        obj.conclusion=testResult
         obj.save()
+

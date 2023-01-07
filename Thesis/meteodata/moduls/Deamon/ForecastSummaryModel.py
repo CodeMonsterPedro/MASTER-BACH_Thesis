@@ -19,15 +19,8 @@ class ForecastSummaryModel(NNBase):
     def predict(self, data):
         result = []
         tmpData = self.encode(data)
-        for row in tmpData:
-            result.append(self._neuralNetObject.predict(row, verbose=1))
+        result = self._neuralNetObject.predict(tmpData, verbose=1)
         return self.decode(result)
-    
-    def _predict(self, data):
-        result = []
-        for row in data:
-            result.append(self._neuralNetObject.predict(row, verbose=1))
-        return result
 
     def decode(self, data):
         val = list(self._correctWeatherDict.values())
@@ -45,6 +38,22 @@ class ForecastSummaryModel(NNBase):
             for i in range(len(val)):
                 if maxValueIndex + 1 == val[i]:
                     resultList.append(keys[i])
+        return resultList
+
+    def _decode(self, data):
+        val = list(self._correctWeatherDict.values())
+        keys = list(self._correctWeatherDict.keys())
+        resultList = []
+        for row in data:
+            maxValueIndex = 0
+            if isinstance(row, float):
+                maxValueIndex = row - 1
+            else:
+                maxValueIndex = 0
+                for i in range(len(row)):
+                    if row[i] > row[maxValueIndex]:
+                        maxValueIndex = i
+                resultList.append(maxValueIndex)
         return resultList
     
     def encode(self, data):
@@ -104,21 +113,22 @@ class ForecastSummaryModel(NNBase):
         return d
     
     def test(self):
-        for obj in self._neuralNetObject.layers:
-            print(obj.get_weights()[0])
+        ForecastSummaryModel.write_weights(self._neuralNetObject, False)
+        # testData = self._encode(self.loadDataSet())
         testData = self._encode(list(Meteodata.objects.all().order_by('-datetime').values()[:500000]))
-        predictResult = self._predict(testData['test_values'])
+        predictResult = self._neuralNetObject.predict(testData['test_values'], verbose=1)
+        predictResult = self._decode(predictResult)
         test_result = ''
         acc = Accuracy()
         acc.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' Accuracy: {} '.format(acc.result().numpy())
+        test_result = test_result + ' Accuracy: {} '.format(float(f'{acc.result().numpy():.2f}'))
         mse = MeanSquaredError()
         mse.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' MeanSquaredError: {} '.format(mse.result().numpy())
+        test_result = test_result + ' MeanSquaredError: {} '.format(float(f'{mse.result().numpy():.2f}'))
         mae = MeanAbsoluteError()
         mae.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' MeanAbsoluteError: {} '.format(mae.result().numpy())
+        test_result = test_result + ' MeanAbsoluteError: {} '.format(float(f'{mae.result().numpy():.2f}'))
         rmse = RootMeanSquaredError()
         rmse.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' RootMeanSquaredError: {} '.format(str(rmse.result().numpy()))
+        test_result = test_result + ' RootMeanSquaredError: {} '.format(float(f'{rmse.result().numpy():.2f}'))
         return test_result
