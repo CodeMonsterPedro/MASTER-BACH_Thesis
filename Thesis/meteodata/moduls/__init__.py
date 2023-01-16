@@ -88,8 +88,7 @@ class MainMenu:
                 'weather': resultSummary[i]
             })
         print('finish forecast creation: ', str(datetime.now() - date))
-        print(result[:40])
-        # MainMenu._save_forecast(result)
+        MainMenu._save_forecast(result)
 
     def make_test(examiner_id):
         print('make_nets_test')

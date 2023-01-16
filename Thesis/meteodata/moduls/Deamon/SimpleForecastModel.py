@@ -8,7 +8,7 @@ from sklearn import metrics
 from sklearn.model_selection import train_test_split 
 import time as ttime
 from ...models import Meteodata, ForecastMeteodata, NeuralNet
-from tensorflow.keras.metrics import SparseCategoricalAccuracy, Precision, AUC, Recall, MeanIoU
+from tensorflow.keras.metrics import Accuracy, MeanAbsoluteError, Precision, Recall
 from .NNBase import NNBase
 
 
@@ -88,21 +88,18 @@ class SimpleForecastModel(NNBase):
         testData = self._encode(self.loadDataSet())
         predictResult = self._neuralNetObject.predict(testData['test_values'], verbose=1)
         test_result = ''
-        sca = SparseCategoricalAccuracy()
-        sca.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' SparseCategoricalAccuracy: {} '.format(float(f'{sca.result().numpy():.2f}'))
+        acc = Accuracy()
+        acc.update_state(testData['test_labels'], predictResult)
+        test_result = test_result + ' Accuracy: {} '.format(float(f'{acc.result().numpy():.2f}'))
         prec = Precision()
         prec.update_state(testData['test_labels'], predictResult)
         test_result = test_result + ' Precision: {} '.format(float(f'{prec.result().numpy():.2f}'))
-        auc = AUC()
-        auc.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' AUC: {} '.format(float(f'{auc.result().numpy():.2f}'))
+        mae = MeanAbsoluteError()
+        mae.update_state(testData['test_labels'], predictResult)
+        test_result = test_result + ' MeanAbsoluteError: {} '.format(float(f'{mae.result().numpy():.2f}'))
         rec = Recall()
         rec.update_state(testData['test_labels'], predictResult)# "Recall" config: '"top_k": 1'
         test_result = test_result + ' Recall: {} '.format(float(f'{rec.result().numpy():.2f}'))
-        miou = MeanIoU()
-        miou.update_state(testData['test_labels'], predictResult)
-        test_result = test_result + ' MeanIoU: {} '.format(float(f'{miou.result().numpy():.2f}'))
         return test_result
 
         

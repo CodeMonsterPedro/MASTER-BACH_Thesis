@@ -2,6 +2,7 @@ from ..models import NeuralNet, Test
 from datetime import datetime
 from .Deamon.ForecastSummaryModel import ForecastSummaryModel
 from .Deamon.SimpleForecastModel import SimpleForecastModel
+from ..forms import TestForm
 import statistics
 
 
@@ -47,8 +48,21 @@ class Tester:
         obj.save()
 
     def saveTest(self, examiner_id, testResult):
-        obj = Test.objects.get(neuralnet_id=examiner_id)
-        obj.datetime=datetime.today()
-        obj.conclusion=testResult
-        obj.save()
+        obj = Test.objects.all().filter(neuralnet_id=examiner_id)
+        if len(obj) != 0:
+            obj = Test.objects.get(neuralnet_id=examiner_id)
+            obj.datetime=datetime.today()
+            obj.conclusion=testResult
+            obj.save()
+        else:
+            data = {
+                'neuralnet_id': examiner_id,
+                'datetime': datetime.today(), 
+                'conclusion': testResult
+            }
+            form = TestForm(data)
+            if form.is_valid():
+                form.save()
+            else:
+                print(form.errors)
 
