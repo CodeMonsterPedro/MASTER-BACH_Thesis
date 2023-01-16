@@ -66,7 +66,7 @@ class SimpleForecastModel(NNBase):
             lebtmp.append(float(values[i + 1]['water_pressure']) / 10000)# 7 - water_pressure
             valueList.append(valtmp)
             labelList.append(lebtmp)
-        train_values, test_values, train_labels, test_labels = train_test_split(valueList, labelList, test_size=0.20, random_state=42)
+        train_values, test_values, train_labels, test_labels = train_test_split(valueList, labelList, test_size=0.20)
         d = {'values': valueList, 'lables': labelList, 'train_values': train_values, 'test_values': test_values, 'train_labels': train_labels, 'test_labels': test_labels}
         return d
 

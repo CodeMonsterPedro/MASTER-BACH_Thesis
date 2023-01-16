@@ -30,7 +30,7 @@ class Tester:
         result = {}
         labels = examinerLoader.getHyperparametersLabels()
         for i in range(len(data)):
-            result.update({labels[i]: statistics.mean(data[i])})
+            result.update({labels[i]: abs(statistics.mean(data[i]))})
         important = labels[0]
         not_important = labels[0]
         for key, value in result.items():
@@ -39,7 +39,7 @@ class Tester:
             if value < result[not_important]:
                 not_important = key
         conclusion = 'Important: {} & Not important: {}'.format(important, not_important)
-        print(conclusion)
+        print(result)
         return conclusion
 
     def saveConclusion(self, examiner_id, conclusion):

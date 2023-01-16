@@ -108,7 +108,7 @@ class ForecastSummaryModel(NNBase):
             tmp.append(float(values[i]['water_pressure'])) # 7 - water_pressure
             resultList.append(tmp)
         values = resultList
-        train_values, test_values, train_labels, test_labels = train_test_split(values, labels, test_size=0.20, random_state=42)
+        train_values, test_values, train_labels, test_labels = train_test_split(values, labels, test_size=0.20)
         d = {'values': values, 'lables': labels, 'train_values': train_values, 'test_values': test_values, 'train_labels': train_labels, 'test_labels': test_labels}
         return d
     

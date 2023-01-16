@@ -7,7 +7,7 @@ from ..forms import ForecastForm
 from .Tester import Tester
 from datetime import datetime
 import numpy as np
-from tensorflow.keras.metrics import SparseCategoricalAccuracy
+from tensorflow.keras.metrics import Precision
 from .Deamon.NNBuilder import NNBuilder
 
 
@@ -24,31 +24,46 @@ class MainMenu:
         return context
 
     def magic():
-        # len(list(self._correctWeatherDict.keys())) + 1
-        dataPerc = MainMenu.SummaryModel._encode(list(Meteodata.objects.all().order_by('-datetime').values()[:500000]))
-        objPerc = NNBuilder.buildAutoencoder_ForSummary(len(list(MainMenu.SummaryModel._correctWeatherDict)) + 1)
-        objPerc.fit(dataPerc['train_values'], dataPerc['train_labels'], epochs=10, use_multiprocessing=True)
-        predictResult = objPerc.predict(dataPerc['test_values'][:20])
-        print(predictResult)
-        predictResult = MainMenu.SummaryModel._decode(predictResult)
-        print(predictResult)
-        # MainMenu.SummaryModel._neuralNetObject = objPerc
-        # MainMenu.SummaryModel.saveNet('newPerc')
-        # RNN
-        # dataRnn = MainMenu.ForecastModel._encode(list(Meteodata.objects.all().order_by('-datetime').values()[:500000]))
-        # objRnn = MainMenu.ForecastModel.buildRnnNet()
-        # objRnn.fit(dataRnn['train_values'], dataRnn['train_labels'], epochs=10, use_multiprocessing=True)
-        # tmp = objRnn.predict(dataRnn['test_values'][:20])
-        # print(type(tmp), type(tmp[0]), type(tmp[0][0]))
-        # print(dataRnn['train_values'][:5], dataRnn['train_labels'][:5], dataRnn['test_values'][:5], dataRnn['test_labels'][:5])
-        # predictResult = objRnn.predict(dataRnn['test_values'], verbose=1)
-        # test_result = ''
-        # sca = SparseCategoricalAccuracy()
-        # sca.update_state(dataRnn['test_labels'], predictResult)
-        # test_result = test_result + ' SparseCategoricalAccuracy: {} '.format(sca.result().numpy())
-        # print(test_result)
-        # MainMenu.ForecastModel._neuralNetObject = objRnn
-        # MainMenu.ForecastModel.saveNet('newRnn')
+        task = 'F'
+        modelType = 'RF'
+        data = list(Meteodata.objects.all().order_by('-datetime').values()[:500000])
+        modelObj = []
+        if task == 'S':
+            data = MainMenu.SummaryModel._encode(data)
+        else:
+            data = MainMenu.ForecastModel._encode(data)
+        if modelType == 'PS':
+            modelObj = NNBuilder.buildPerceptronNet()
+        elif modelType == 'PF':
+            modelObj = NNBuilder.buildPerceptronNet_ForForecast()
+        elif modelType == 'RS':
+            modelObj = NNBuilder.buildRnnNet_ForSummary()
+        elif modelType == 'RF':
+            modelObj = NNBuilder.buildRnnNet()
+        elif modelType == 'AS':
+            modelObj = NNBuilder.buildAutoencoder_ForSummary()
+        else:
+            modelObj = NNBuilder.buildAutoencoder_ForForecast()
+        modelObj.fit(data['train_values'], data['train_labels'], epochs=10)
+        predictResult = modelObj.predict(data['test_values'], verbose=1)
+        decoded = []
+        if task == 'S':
+            decoded = MainMenu.SummaryModel._decode(predictResult)
+        else:
+            decoded = MainMenu.ForecastModel.decode(predictResult)
+        print('\n train_values: {} \n train_labels: {} \n test_values: {} \n test_labels: {} \n prediction: {} \n decoded: {} \n'.format(data['train_values'][0], data['train_labels'][0], data['test_values'][0], data['test_labels'][0], predictResult[0], decoded[0]))
+        # ///////////////////////////////////////////////////
+        test_result = ''
+        prec = Precision()
+        prec.update_state(data['test_labels'], predictResult)
+        test_result = test_result + ' Precision: {} '.format(prec.result().numpy())
+        print(test_result)
+        # if task == 'S':
+        #     MainMenu.SummaryModel._neuralNetObject = modelObj
+        #     MainMenu.SummaryModel.saveNet('newRnn')
+        # else:
+        #     MainMenu.ForecastModel._neuralNetObject = modelObj
+        #     MainMenu.ForecastModel.saveNet('newRnn')
         pass
 
     def data_update():
