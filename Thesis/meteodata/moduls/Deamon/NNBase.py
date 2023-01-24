@@ -204,7 +204,6 @@ class NNBase:
         if not os.path.exists('{}/media/models/{}'.format(wayToFile, self._modelName)):
             subprocess.check_output("file-roller -h {}/media/{}".format(wayToFile, str(f)), shell=True)
         self._neuralNetObject = keras.models.load_model('{}/media/models/{}'.format(wayToFile, self._modelName))
-        self._neuralNetObject.summary()
         print('finish load')
 
     def saveNet(self, name='Rnn'):

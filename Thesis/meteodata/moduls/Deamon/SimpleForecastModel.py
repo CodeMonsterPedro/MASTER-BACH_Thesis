@@ -28,16 +28,16 @@ class SimpleForecastModel(NNBase):
         for i in range(len(data)):
             tmp = []
             d = data[i]['datetime']
-            tmp.append(float(d.year) / 10000)
-            tmp.append(float(d.month) / 100)
-            tmp.append(float(d.day)  / 100) # 0 - date
-            tmp.append(float(d.hour)  / 100)
-            tmp.append(float(data[i]['place'] - 30000) / 10000) # 1 - place
-            tmp.append(float(data[i]['temperature'] + 100) / 10000) # 3 - temperature
-            tmp.append(float(data[i]['wind_way']) / 10) # 4 - wind_way
-            tmp.append(float(data[i]['wind_speed']) / 10000) # 5 - wind_speed
-            tmp.append(float(data[i]['air_pressure']) / 10000) # 6 - air_pressure
-            tmp.append(float(data[i]['water_pressure']) / 10000) # 7 - water_pressure
+            tmp.append(float(d.year))
+            tmp.append(float(d.month))
+            tmp.append(float(d.day)) # 0 - date
+            tmp.append(float(d.hour))
+            tmp.append(float(data[i]['place'])) # 1 - place
+            tmp.append(float(data[i]['temperature'])) # 3 - temperature
+            tmp.append(float(data[i]['wind_way'])) # 4 - wind_way
+            tmp.append(float(data[i]['wind_speed'])) # 5 - wind_speed
+            tmp.append(float(data[i]['air_pressure'])) # 6 - air_pressure
+            tmp.append(float(data[i]['water_pressure'])) # 7 - water_pressure
             resultList.append(tmp)
         return resultList
 
@@ -49,21 +49,21 @@ class SimpleForecastModel(NNBase):
             valtmp = []
             lebtmp = []
             d = values[i]['datetime']
-            valtmp.append(float(d.year) / 10000)
-            valtmp.append(float(d.month) / 100)
-            valtmp.append(float(d.day)  / 100) # 0 - date
-            valtmp.append(float(d.hour)  / 100)
-            valtmp.append(float(values[i]['place'] - 30000) / 10000) # 1 - place
-            valtmp.append(float(values[i]['temperature'] + 100) / 10000) # 3 - temperature -
-            valtmp.append(float(values[i]['wind_way']) / 10) # 4 - wind_way
-            valtmp.append(float(values[i]['wind_speed']) / 10000) # 5 - wind_speed -
-            valtmp.append(float(values[i]['air_pressure']) / 10000) # 6 - air_pressure
-            valtmp.append(float(values[i]['water_pressure']) / 10000) # 7 - water_pressure
-            lebtmp.append(float(values[i + 1]['temperature'] + 100) / 10000)# 3 - temperature
-            lebtmp.append(float(values[i + 1]['wind_way']) / 10)# 4 - wind_way
-            lebtmp.append(float(values[i + 1]['wind_speed']) / 10000)# 5 - wind_speed
-            lebtmp.append(float(values[i + 1]['air_pressure']) / 10000)# 6 - air_pressure
-            lebtmp.append(float(values[i + 1]['water_pressure']) / 10000)# 7 - water_pressure
+            valtmp.append(float(d.year))
+            valtmp.append(float(d.month))
+            valtmp.append(float(d.day)) # 0 - date
+            valtmp.append(float(d.hour))
+            valtmp.append(float(values[i]['place'])) # 1 - place
+            valtmp.append(float(values[i]['temperature']) + 700) # 3 - temperature -
+            valtmp.append(float(values[i]['wind_way']) + 700 ) # 4 - wind_way
+            valtmp.append(float(values[i]['wind_speed']) + 700 ) # 5 - wind_speed -
+            valtmp.append(float(values[i]['air_pressure'])) # 6 - air_pressure
+            valtmp.append(float(values[i]['water_pressure'])) # 7 - water_pressure
+            lebtmp.append(float(values[i + 1]['temperature']) + 700)# 3 - temperature
+            lebtmp.append(float(values[i + 1]['wind_way']) + 700)# 4 - wind_way
+            lebtmp.append(float(values[i + 1]['wind_speed']) + 700)# 5 - wind_speed
+            lebtmp.append(float(values[i + 1]['air_pressure']))# 6 - air_pressure
+            lebtmp.append(float(values[i + 1]['water_pressure']))# 7 - water_pressure
             valueList.append(valtmp)
             labelList.append(lebtmp)
         train_values, test_values, train_labels, test_labels = train_test_split(valueList, labelList, test_size=0.20)
@@ -74,11 +74,11 @@ class SimpleForecastModel(NNBase):
         valueList = []
         for i in range(len(data)):
             valtmp = {
-                'temperature': (float(data[i][0]) * 10000) - 100,
-                'wind_way': float(data[i][1]) * 10,
-                'wind_speed': float(data[i][2]) * 10000,
-                'air_pressure': float(data[i][3]) * 10000,
-                'water_pressure': float(data[i][4]) * 10000
+                'temperature': float(f'{(data[i][0] - 700):.1f}'),
+                'wind_way': int(data[i][1] - 700),
+                'wind_speed': abs(float(f'{(data[i][2] - 700):.1f}')),
+                'air_pressure': float(f'{data[i][3]:.1f}'),
+                'water_pressure': float(f'{data[i][4]:.1f}')
             }
             valueList.append(valtmp)
         print(valueList[:10])
